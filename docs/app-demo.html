@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Book Illustration Studio — working demo (Gradion Design System)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+
+/* =========================================================================
+   Tokens — copied from Gradion Design System / design-system/tokens/colors_and_type.css
+   (font @font-face rules omitted for this static mock; system fallback used)
+   ========================================================================= */
+:root {
+  --grad-orange:        #FF6B00;
+  --grad-orange-hover:  #E85F00;
+  --grad-orange-light:  #FFA861;
+  --grad-orange-pale:   #FFC391;
+  --grad-orange-deep:   #3A160A;
+
+  --grad-ink:           #231F20;
+  --grad-ink-body:      #434343;
+  --grad-ink-2:         #595959;
+  --grad-ink-3:         #919699;
+  --grad-line:          #BAB7B1;
+  --grad-paper:         #F2EEE7;
+  --grad-paper-2:       #F8F8F8;
+  --grad-white:         #FFFFFF;
+  --grad-black:         #1D1C1D;
+
+  --fg-1: var(--grad-ink); --fg-2: var(--grad-ink-2); --fg-3: var(--grad-ink-3);
+  --bg-1: var(--grad-white); --bg-2: var(--grad-paper); --bg-3: var(--grad-paper-2);
+  --bg-accent-soft: #FFEEDF;
+
+  --border-1: var(--grad-line);
+  --border-2: #E8E2E0;
+
+  --font-sans:    "Noto Sans", system-ui, sans-serif;
+  --font-display: "Noto Sans", system-ui, sans-serif;
+
+  --fs-h2: 32px; --fs-h3: 24px; --fs-h4: 18px; --fs-body: 16px; --fs-meta: 12px;
+  --lh-tight: 1.1; --lh-normal: 1.5; --lh-loose: 1.65;
+  --fw-medium: 500; --fw-semi: 600; --fw-bold: 700; --fw-black: 800;
+
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
+  --sp-6: 32px; --sp-7: 48px; --sp-8: 64px; --sp-9: 96px;
+
+  --r-0: 0px; --r-1: 4px; --r-2: 8px; --r-3: 12px; --r-4: 16px; --r-pill: 999px;
+
+  --shadow-card: 0 2px 6px rgba(35,31,32,0.06), 0 1px 2px rgba(35,31,32,0.04);
+  --shadow-pop:  0 8px 24px rgba(35,31,32,0.10), 0 2px 6px rgba(35,31,32,0.06);
+
+  --ease-standard: cubic-bezier(.2,.7,.2,1);
+  --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 320ms;
+
+  --content-max: 1100px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; font-family: var(--font-sans); font-size: var(--fs-body); line-height: var(--lh-normal);
+  color: var(--fg-1); background: var(--bg-3); -webkit-font-smoothing: antialiased;
+}
+h1,h2,h3,h4,h5 { font-family: var(--font-display); color: var(--fg-1); font-weight: var(--fw-bold); line-height: var(--lh-tight); margin: 0 0 var(--sp-4); }
+h2 { font-size: var(--fs-h2); } h3 { font-size: var(--fs-h3); font-weight: var(--fw-semi); } h4 { font-size: var(--fs-h4); }
+p { margin: 0 0 var(--sp-4); }
+.meta { font-size: var(--fs-meta); color: var(--fg-3); }
+button { font-family: inherit; }
+
+/* ---- atoms, from gradion-components.css ---- */
+.gd-signature { font-size: 13px; color: var(--grad-ink-3); letter-spacing: .02em; }
+.gd-signature b { color: var(--grad-ink-2); font-weight: 600; }
+.gd-pill { display: inline-flex; align-items: center; justify-content: center; padding: 6px 14px; background: var(--grad-orange); color: #fff; border-radius: 999px; font-weight: 700; font-size: 12px; line-height: 1; }
+.project-row .gd-pill { min-width: 104px; }
+.gd-pill.gray { background: var(--grad-ink-3); }
+.gd-pill.ink  { background: var(--grad-ink); }
+.gd-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; margin-right: 6px; display: inline-block; }
+.gd-num-square { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--grad-orange); color: #fff; font-family: var(--font-display); font-weight: 800; font-size: 13px; flex-shrink: 0; }
+.gd-num-square.gray { background: var(--grad-line); color: var(--grad-ink-2); }
+.gd-num-square.done { background: var(--grad-ink); }
+.gd-card { background: var(--grad-paper); border-radius: var(--r-4); padding: 24px 28px; }
+.gd-btn { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; line-height: 1; padding: 12px 20px; border-radius: var(--r-2); border: 1px solid transparent; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background var(--dur-base) var(--ease-standard), color var(--dur-base) var(--ease-standard), border-color var(--dur-base) var(--ease-standard); }
+.gd-btn:active { transform: translateY(1px); }
+.gd-btn:disabled { cursor: not-allowed; opacity: .55; }
+.gd-btn-primary { background: var(--grad-orange); color: #fff; }
+.gd-btn-primary:hover:not(:disabled) { background: var(--grad-orange-hover); }
+.gd-btn-secondary { background: transparent; color: var(--grad-ink); border-color: var(--grad-ink); }
+.gd-btn-secondary:hover:not(:disabled) { background: var(--grad-orange); color: #fff; border-color: var(--grad-orange); }
+.gd-btn-ghost { background: transparent; color: var(--grad-orange); padding-left: 0; padding-right: 0; }
+.gd-btn-ghost:hover { color: var(--grad-orange-hover); }
+.gd-btn-sm { font-size: 12px; padding: 8px 14px; }
+.gd-arrow { display: inline-block; transform: translateY(-1px); }
+
+.gd-field { display: block; }
+.gd-field + .gd-field { margin-top: 14px; }
+.gd-field > label { display: block; font-size: 12px; font-weight: 600; color: var(--grad-ink); margin-bottom: 6px; }
+.gd-field .req { color: var(--grad-orange); }
+.gd-field input, .gd-field textarea {
+  font: inherit; font-size: 14px; width: 100%; box-sizing: border-box; padding: 11px 14px;
+  background: #fff; border: 1px solid var(--border-1); border-radius: var(--r-2); color: var(--grad-ink);
+  transition: border-color var(--dur-base) var(--ease-standard), box-shadow var(--dur-base) var(--ease-standard);
+}
+.gd-field input:focus, .gd-field textarea:focus { outline: none; border-color: var(--grad-orange); box-shadow: 0 0 0 3px rgba(255,107,0,0.15); }
+.gd-field .err { font-size: 12px; color: var(--grad-orange-deep); margin-top: 5px; }
+
+/* ---- app shell ---- */
+.gd-nav { position: sticky; top: 0; z-index: 5; background: rgba(255,255,255,0.97); border-bottom: 1px solid var(--border-2); }
+.gd-nav-inner { max-width: var(--content-max); margin: 0 auto; padding: 14px 32px; display: flex; align-items: center; gap: 28px; }
+.gd-nav-logo img { height: 22px; display: block; }
+.gd-nav-logo { cursor: pointer; }
+.gd-nav-links { display: flex; gap: 22px; margin-left: 4px; }
+.gd-nav-links a { color: var(--grad-ink); font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer; }
+.gd-nav-links a:hover { color: var(--grad-orange); }
+.gd-nav-user { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--grad-ink-2); }
+.gd-nav-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--grad-orange); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+.gd-nav-user a { color: var(--grad-ink-3); text-decoration: none; cursor: pointer; font-size: 12px; }
+.gd-nav-user a:hover { color: var(--grad-orange); }
+
+.app-body { max-width: var(--content-max); margin: 0 auto; padding: var(--sp-7) var(--sp-5) var(--sp-9); }
+.app-body.narrow { max-width: 460px; }
+.center-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: var(--sp-5); }
+
+.auth-card { width: 100%; max-width: 420px; background: #fff; border-radius: var(--r-4); box-shadow: var(--shadow-card); padding: var(--sp-7) var(--sp-6); }
+.auth-card .logo-row { text-align: center; margin-bottom: var(--sp-6); }
+.auth-card .logo-row img { height: 26px; }
+.auth-card p.lede { text-align: center; color: var(--grad-ink-2); font-size: 14px; margin-bottom: var(--sp-6); }
+.auth-card .gd-btn { width: 100%; justify-content: center; margin-top: var(--sp-5); }
+
+.list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-6); }
+.list-head h2 { margin: 0; }
+.project-list { display: flex; flex-direction: column; gap: var(--sp-3); }
+.project-row { background: #fff; border: 1px solid var(--border-2); border-radius: var(--r-3); padding: var(--sp-4) var(--sp-5); display: flex; align-items: center; gap: var(--sp-5); cursor: pointer; transition: box-shadow var(--dur-base) var(--ease-standard), transform var(--dur-base) var(--ease-standard); }
+.project-row:hover { box-shadow: var(--shadow-card); }
+.project-row .title { flex: 1; min-width: 0; }
+.project-row .title h4 { margin: 0 0 3px; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.project-row .progress-mini { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.project-row .progress-mini .seg { display: inline-block; width: 18px; height: 4px; border-radius: 2px; background: var(--border-1); flex-shrink: 0; }
+.project-row .progress-mini .seg.on { background: var(--grad-orange); }
+.empty-state { text-align: center; padding: var(--sp-9) var(--sp-5); color: var(--grad-ink-2); border: 1px dashed var(--border-1); border-radius: var(--r-4); }
+.empty-state .gd-btn { margin-top: var(--sp-4); }
+
+.dropzone { border: 1.5px dashed var(--border-1); border-radius: var(--r-3); padding: var(--sp-6) var(--sp-5); text-align: center; background: var(--grad-paper); color: var(--grad-ink-2); margin-bottom: var(--sp-4); cursor: pointer; }
+.dropzone:hover { border-color: var(--grad-orange); }
+.dropzone .hint { font-size: 12px; margin-top: var(--sp-2); color: var(--grad-ink-3); }
+.dropzone.has-file { border-style: solid; border-color: var(--grad-orange); color: var(--grad-ink); }
+.divider-or { display: flex; align-items: center; gap: var(--sp-3); color: var(--grad-ink-3); font-size: 12px; margin: var(--sp-4) 0; text-transform: uppercase; letter-spacing: .06em; }
+.divider-or::before, .divider-or::after { content: ""; flex: 1; height: 1px; background: var(--border-2); }
+
+.back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--grad-ink-2); text-decoration: none; cursor: pointer; margin-bottom: var(--sp-5); }
+.back-link:hover { color: var(--grad-orange); }
+
+.stepper { display: flex; align-items: center; margin-bottom: var(--sp-7); flex-wrap: wrap; gap: 6px; }
+.stepper .step { display: flex; align-items: center; gap: 8px; }
+.stepper .step .lbl { font-size: 13px; font-weight: 600; color: var(--grad-ink-2); }
+.stepper .step.current .lbl { color: var(--grad-ink); }
+.stepper .step.pending .lbl { color: var(--grad-ink-3); }
+.stepper .connector { flex: 1; height: 1px; background: var(--border-1); margin: 0 8px; min-width: 16px; }
+.stepper .connector.done { background: var(--grad-orange); }
+
+.detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-7); align-items: start; }
+.panel-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-4); }
+.panel-title h3 { margin: 0; font-size: 16px; }
+.entity-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-4); }
+.entity-card { background: #fff; border: 1px solid var(--border-2); border-radius: var(--r-3); overflow: hidden; }
+.entity-card .art { aspect-ratio: 3/4; background: linear-gradient(160deg, var(--grad-paper) 0%, var(--grad-orange-pale) 55%, var(--grad-orange-light) 100%); display: flex; align-items: center; justify-content: center; position: relative; }
+.entity-card .art.chapter { aspect-ratio: 16/10; }
+.entity-card .art.pending { background: #fff; }
+.entity-card .art .placeholder-label { font-size: 11px; color: rgba(35,31,32,0.55); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; background: rgba(255,255,255,0.65); padding: 4px 9px; border-radius: 999px; }
+.entity-card .art .placeholder-label.muted { background: none; color: var(--grad-ink-2); }
+.entity-card .body { padding: var(--sp-3) var(--sp-4); }
+.entity-card .body h5 { margin: 0 0 3px; font-size: 13px; font-weight: 700; }
+.entity-card .body p { margin: 0; font-size: 11px; line-height: 1.5; color: var(--grad-ink-2); }
+
+.spinner { display: inline-block; width: 24px; height: 24px; border-radius: 50%; border: 3px solid var(--border-1); border-top-color: var(--grad-orange); animation: gd-spin 900ms linear infinite; flex-shrink: 0; }
+@keyframes gd-spin { to { transform: rotate(360deg); } }
+.gen-caption { font-size: 11px; color: var(--grad-ink-2); margin-top: var(--sp-2); text-align: center; padding: 0 8px; }
+
+.step-panel { background: #fff; border: 1px solid var(--border-2); border-radius: var(--r-3); padding: var(--sp-5); min-height: 132px; }
+.step-panel .status-line { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--grad-ink-2); margin-bottom: var(--sp-4); min-height: 20px; }
+.step-panel .status-line .spinner { width: 16px; height: 16px; border-width: 2px; }
+.step-panel p.help { font-size: 12px; color: var(--grad-ink-3); margin: 0; }
+.step-panel .gd-btn { min-width: 190px; justify-content: center; }
+
+.side-note { background: var(--grad-paper); border-radius: var(--r-3); padding: var(--sp-4); min-height: 92px; }
+.side-note h5 { margin: 0 0 var(--sp-2); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--grad-ink-3); font-weight: 700; }
+.side-note p { font-size: 13px; margin: 0; }
+
+/* ---- Book text modal ---- */
+.modal-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(35,31,32,0.45); display: flex; align-items: center; justify-content: center; padding: var(--sp-5); }
+.modal-overlay[hidden] { display: none; }
+.modal-box { background: #fff; border-radius: var(--r-4); box-shadow: var(--shadow-pop); width: 100%; max-width: 640px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--border-2); flex-shrink: 0; }
+.modal-close { background: none; border: 0; padding: 6px; margin: -6px; font-size: 15px; line-height: 1; color: var(--grad-ink-2); cursor: pointer; border-radius: var(--r-1); }
+.modal-close:hover { color: var(--grad-orange); }
+.modal-body { padding: var(--sp-5); overflow-y: auto; font-size: 14px; line-height: var(--lh-loose); color: var(--grad-ink-2); white-space: pre-wrap; }
+
+footer.app-footer { text-align: center; padding: var(--sp-7) var(--sp-5); }
+footer.app-footer a { color: var(--grad-ink-3); font-size: 11px; text-decoration: underline; cursor: pointer; }
+
+@media (max-width: 720px) {
+  .detail-grid { grid-template-columns: 1fr; }
+  .stepper .lbl { display: none; }
+}
+
+/* =========================================================================
+   Motion — entrances use opacity/transform only (never width/height/margin)
+   so they never cause layout shift. Respects prefers-reduced-motion.
+   ========================================================================= */
+@keyframes gd-fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes gd-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gd-dot-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes gd-ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,0,0.35); }
+  50%      { box-shadow: 0 0 0 5px rgba(255,107,0,0); }
+}
+@keyframes gd-modal-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes gd-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+
+.app-body, .center-page .auth-card { animation: gd-fade-up var(--dur-slow) var(--ease-standard) both; }
+.step-panel, .side-note { animation: gd-fade-in var(--dur-slow) var(--ease-standard) both; }
+.project-row, .entity-card { animation: gd-fade-up var(--dur-slow) var(--ease-standard) both; animation-delay: var(--stagger, 0ms); }
+
+.gd-pill .dot { animation: gd-dot-pulse 1.6s ease-in-out infinite; }
+.step.current .gd-num-square { animation: gd-ring-pulse 2s ease-in-out infinite; }
+.modal-overlay:not([hidden]) { animation: gd-overlay-in var(--dur-base) var(--ease-standard) both; }
+.modal-overlay:not([hidden]) .modal-box { animation: gd-modal-in var(--dur-base) var(--ease-standard) both; }
+
+.gd-btn-primary:hover:not(:disabled), .gd-btn-secondary:hover:not(:disabled) { transform: translateY(-1px); }
+.project-row:hover { transform: translateY(-1px); }
+
+/* Keyboard focus — visible ring, never shown for mouse/touch */
+a:focus-visible, button:focus-visible, .project-row:focus-visible, .dropzone:focus-visible {
+  outline: 2px solid var(--grad-orange); outline-offset: 2px; border-radius: var(--r-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.001ms !important; }
+  .app-body, .center-page .auth-card, .step-panel, .side-note, .project-row, .entity-card,
+  .gd-pill .dot, .step.current .gd-num-square, .modal-overlay, .modal-box {
+    animation-duration: 0.001ms !important; animation-iteration-count: 1 !important;
+  }
+  /* .spinner keeps spinning — it communicates real loading state, not decoration */
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<!-- Outside #app on purpose: render() replaces #app's innerHTML on every state
+     change (e.g. every ~1.5s tick while portraits/illustrations reveal), which
+     would otherwise unmount this modal while it's open. -->
+<div id="book-modal" class="modal-overlay" hidden onclick="if(event.target===this)closeBookModal()">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="book-modal-title">
+    <div class="modal-head">
+      <h4 id="book-modal-title" style="margin:0;">Full book text</h4>
+      <button type="button" class="modal-close" id="book-modal-close" onclick="closeBookModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="book-modal-body"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   Data layer — everything lives in localStorage. No backend: this is a
+   click-through functional demo of the required flow, using setTimeout to
+   stand in for real Gemini calls and CSS placeholders instead of real
+   images. Persisting to localStorage (keyed by user, keyed by project) is
+   what makes "refresh / come back later / resume" actually work here.
+   ========================================================================= */
+const DB_KEY = 'biStudioDemoDB';
+const LOGO = "data:image/png;base64,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";
+
+function loadDB() {
+  try { return JSON.parse(localStorage.getItem(DB_KEY)) || { currentEmail: null, users: {} }; }
+  catch (e) { return { currentEmail: null, users: {} }; }
+}
+function saveDB(db) { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+let db = loadDB();
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+const STEPS = [
+  { key: 'STYLE',        label: 'Style',        status: 'STYLE_SET' },
+  { key: 'CHARACTERS',   label: 'Characters',    status: 'CHARACTERS_GENERATED' },
+  { key: 'PORTRAITS',    label: 'Portraits',     status: 'PORTRAITS_GENERATED' },
+  { key: 'CHAPTERS',     label: 'Chapters',      status: 'CHAPTERS_GENERATED' },
+  { key: 'ILLUSTRATIONS',label: 'Illustrations', status: 'DONE' },
+];
+const STATUS_ORDER = ['CREATED', ...STEPS.map(s => s.status)];
+function statusIndex(status) { return STATUS_ORDER.indexOf(status); }
+
+function currentUser() {
+  if (!db.currentEmail) return null;
+  return db.users[db.currentEmail] || null;
+}
+function findProject(id) {
+  const u = currentUser();
+  if (!u) return null;
+  return u.projects.find(p => p.id === id) || null;
+}
+
+/* ---- book text modal — lives outside #app so render() never unmounts it ---- */
+let bookModalReturnFocus = null;
+function openBookModal(projectId) {
+  const p = findProject(projectId);
+  if (!p) return;
+  const modal = document.getElementById('book-modal');
+  document.getElementById('book-modal-body').textContent = p.bookText;
+  bookModalReturnFocus = document.activeElement;
+  modal.hidden = false;
+  document.getElementById('book-modal-close').focus();
+  document.addEventListener('keydown', onBookModalKeydown);
+}
+function closeBookModal() {
+  const modal = document.getElementById('book-modal');
+  modal.hidden = true;
+  document.removeEventListener('keydown', onBookModalKeydown);
+  if (bookModalReturnFocus && document.contains(bookModalReturnFocus)) bookModalReturnFocus.focus();
+}
+function onBookModalKeydown(e) { if (e.key === 'Escape') closeBookModal(); }
+
+/* ---- routing: #/ (auth) · #/projects · #/projects/new · #/projects/:id ---- */
+function navigate(hash) { location.hash = hash; }
+window.addEventListener('hashchange', render);
+window.addEventListener('DOMContentLoaded', render);
+
+function route() {
+  const h = location.hash.replace(/^#\/?/, '');
+  if (!currentUser()) return { name: 'auth' };
+  if (h === '' || h === 'projects') return { name: 'list' };
+  if (h === 'projects/new') return { name: 'new' };
+  const m = h.match(/^projects\/([a-z0-9]+)$/);
+  if (m) return { name: 'detail', id: m[1] };
+  return { name: 'list' };
+}
+
+/* ---- actions ---- */
+function doSignIn() {
+  const name = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim().toLowerCase();
+  const errEl = document.getElementById('auth-err');
+  if (!name || !email || !email.includes('@')) {
+    errEl.textContent = 'Enter your name and a valid email to continue.';
+    return;
+  }
+  if (!db.users[email]) db.users[email] = { name, email, projects: [] };
+  else db.users[email].name = name;
+  db.currentEmail = email;
+  saveDB(db);
+  navigate('#/projects');
+}
+function signOut() { db.currentEmail = null; saveDB(db); navigate('#/'); }
+
+let pendingBookText = '';
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    pendingBookText = e.target.result;
+    document.getElementById('dropzone').classList.add('has-file');
+    document.getElementById('dropzone-label').textContent = '✓ ' + file.name + ' loaded';
+    document.getElementById('book-textarea').value = pendingBookText;
+  };
+  reader.readAsText(file);
+}
+function createProject() {
+  const title = document.getElementById('f-title').value.trim();
+  const text = document.getElementById('book-textarea').value.trim();
+  const errEl = document.getElementById('new-err');
+  if (!title || !text) {
+    errEl.textContent = 'Give the project a title and provide the book text (paste or upload).';
+    return;
+  }
+  const u = currentUser();
+  const project = {
+    id: uid(), title, bookText: text, createdAt: Date.now(),
+    status: 'CREATED', style: null, characters: [], chapters: [],
+    stepState: 'IDLE',
+  };
+  u.projects.unshift(project);
+  saveDB(db);
+  navigate('#/projects/' + project.id);
+}
+
+function snippet(text, n) {
+  const s = text.replace(/\s+/g, ' ').trim();
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+function runStyleStep(projectId) {
+  const input = document.getElementById('style-input');
+  const customStyle = input ? input.value.trim() : '';
+  runStep(projectId, 'STYLE', customStyle);
+}
+
+function runStep(projectId, stepKey, customStyle) {
+  const p = findProject(projectId);
+  if (!p || p.stepState === 'RUNNING') return; // guard: no duplicate work
+  p.stepState = 'RUNNING';
+  p.stepStartedAt = Date.now();
+  saveDB(db);
+  render();
+
+  const delay = 1600 + Math.random() * 900;
+  setTimeout(() => {
+    const proj = findProject(projectId); // re-fetch in case state moved on
+    if (!proj) return;
+    if (stepKey === 'STYLE') {
+      // Mirrors the notebook's style="" param: use what the user typed, or let Gemini choose one.
+      proj.style = customStyle
+        ? customStyle + ' (as you specified — Gemini will keep this in mind for every prompt below).'
+        : 'Warm, hand-painted watercolour with soft ink outlines — a storybook feel drawn from the tone of your text, lightly heightened with saturated color and gentle light.';
+      proj.status = 'STYLE_SET';
+      finishStep(proj);
+    } else if (stepKey === 'CHARACTERS') {
+      proj.characters = [
+        { name: 'Character A', prompt: 'A protagonist drawn from your book’s opening: "' + snippet(proj.bookText, 90) + '"', portraitReady: false },
+        { name: 'Character B', prompt: 'A companion or foil who appears alongside Character A throughout the story.', portraitReady: false },
+      ];
+      proj.status = 'CHARACTERS_GENERATED';
+      finishStep(proj);
+    } else if (stepKey === 'PORTRAITS') {
+      revealSequentially(proj, proj.characters, 'portraitReady', () => {
+        proj.status = 'PORTRAITS_GENERATED';
+        finishStep(proj);
+      });
+      return; // finishStep called inside the sequence
+    } else if (stepKey === 'CHAPTERS') {
+      proj.chapters = [
+        { name: 'Opening Scene', prompt: 'An illustration capturing the opening of your book: "' + snippet(proj.bookText, 110) + '" — featuring Character A and Character B, following the established style.', illustrationReady: false },
+      ];
+      proj.status = 'CHAPTERS_GENERATED';
+      finishStep(proj);
+    } else if (stepKey === 'ILLUSTRATIONS') {
+      revealSequentially(proj, proj.chapters, 'illustrationReady', () => {
+        proj.status = 'DONE';
+        finishStep(proj);
+      });
+      return;
+    }
+  }, delay);
+}
+
+function finishStep(proj) {
+  proj.stepState = 'IDLE';
+  proj.stepStartedAt = null;
+  saveDB(db);
+  render();
+}
+
+// A step's setTimeout only lives in page memory — a refresh mid-step loses it,
+// which would otherwise leave stepState stuck at RUNNING forever. If a step has
+// been "running" implausibly long (far past this demo's ~1.6-2.5s delays), treat
+// it as interrupted and let the user retry, per the spec's "no stuck-forever" rule.
+const STALE_RUNNING_MS = 8000;
+function isStale(p) {
+  return p.stepState === 'RUNNING' && p.stepStartedAt && (Date.now() - p.stepStartedAt) > STALE_RUNNING_MS;
+}
+function retryStuckStep(projectId) {
+  const p = findProject(projectId);
+  if (!p) return;
+  p.stepState = 'IDLE';
+  p.stepStartedAt = null;
+  saveDB(db);
+  render();
+}
+
+// Reveals each item's image one at a time (matches the notebook's per-item loop),
+// re-rendering after each so the UI visibly fills in rather than jumping to done.
+function revealSequentially(proj, items, flagKey, done) {
+  let i = 0;
+  function next() {
+    if (i >= items.length) { done(); return; }
+    setTimeout(() => {
+      items[i][flagKey] = true;
+      i++;
+      saveDB(db);
+      render();
+      next();
+    }, 1100 + Math.random() * 700);
+  }
+  next();
+}
+
+/* ---- rendering ---- */
+function render() {
+  const r = route();
+  const app = document.getElementById('app');
+  if (r.name === 'auth') { app.innerHTML = renderAuth(); return; }
+  const u = currentUser();
+  let body = '';
+  if (r.name === 'list') body = renderList(u);
+  else if (r.name === 'new') body = renderNew();
+  else if (r.name === 'detail') {
+    const p = findProject(r.id);
+    body = p ? renderDetail(u, p) : renderList(u);
+  }
+  app.innerHTML = renderNav(u) + body + renderFooter();
+  wireDropzone();
+}
+
+function renderNav(u) {
+  const initials = (u.name || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  return `
+  <div class="gd-nav">
+    <div class="gd-nav-inner">
+      <div class="gd-nav-logo" onclick="navigate('#/projects')"><img src="${LOGO}" alt="Gradion"></div>
+      <div class="gd-nav-links"><a onclick="navigate('#/projects')">Projects</a></div>
+      <div class="gd-nav-user">
+        <div class="gd-nav-avatar">${initials}</div>
+        ${escapeHtml(u.name)}
+        <a onclick="signOut()">Sign out</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderFooter() {
+  return `<footer class="app-footer"><span class="gd-signature">GRADION <b>|</b> Scaling Business</span> &middot; <a onclick="if(confirm('Clear all demo data?')){localStorage.removeItem('${DB_KEY}');location.hash='#/';location.reload();}">reset demo data</a></footer>`;
+}
+
+function renderAuth() {
+  return `
+  <div class="center-page">
+    <div class="auth-card">
+      <div class="logo-row"><img src="${LOGO}" alt="Gradion"></div>
+      <h3 style="text-align:center;font-size:20px;">Book Illustration Studio</h3>
+      <p class="lede">Enter your details to start or resume an illustration project.</p>
+      <div class="gd-field">
+        <label for="f-name">Full name <span class="req">*</span></label>
+        <input id="f-name" placeholder="Mira Hassan">
+      </div>
+      <div class="gd-field">
+        <label for="f-email">Email <span class="req">*</span></label>
+        <input id="f-email" type="email" placeholder="mira@example.com" onkeydown="if(event.key==='Enter')doSignIn()">
+      </div>
+      <div class="gd-field err" id="auth-err"></div>
+      <button class="gd-btn gd-btn-primary" onclick="doSignIn()">Continue <span class="gd-arrow">→</span></button>
+      <p class="meta" style="text-align:center;margin-top:14px;">No password — this is a lightweight identity check. Using an email that already has projects resumes them exactly where you left off.</p>
+    </div>
+  </div>`;
+}
+
+function projectSubtitle(p) {
+  if (p.status === 'CREATED') return 'Book text saved · style not yet generated';
+  if (p.status === 'DONE') return 'All 5 steps complete';
+  const idx = statusIndex(p.status);
+  return STEPS.slice(0, idx).map(s => s.label).join(' + ') + ' done';
+}
+function projectPillHtml(p) {
+  if (p.status === 'DONE') return `<span class="gd-pill ink">Done</span>`;
+  if (p.status === 'CREATED') return `<span class="gd-pill gray">Draft</span>`;
+  return `<span class="gd-pill"><span class="dot"></span>In progress</span>`;
+}
+function progressMiniHtml(p) {
+  const idx = statusIndex(p.status); // 0..5
+  let segs = '';
+  for (let i = 0; i < STEPS.length; i++) segs += `<span class="seg ${i < idx ? 'on' : ''}"></span>`;
+  return `<div class="progress-mini">${segs}</div>`;
+}
+
+function renderList(u) {
+  if (!u.projects.length) {
+    return `<div class="app-body">
+      <div class="list-head"><h2>Your projects</h2></div>
+      <div class="empty-state">
+        <p style="margin:0;">No projects yet.</p>
+        <button class="gd-btn gd-btn-primary" onclick="navigate('#/projects/new')">+ New project</button>
+      </div>
+    </div>`;
+  }
+  const rows = u.projects.map((p, i) => `
+    <div class="project-row" style="--stagger:${i * 45}ms" tabindex="0" onclick="navigate('#/projects/${p.id}')" onkeydown="if(event.key==='Enter')navigate('#/projects/${p.id}')">
+      <div class="title"><h4>${escapeHtml(p.title)}</h4><span class="meta">Created ${new Date(p.createdAt).toLocaleDateString()} · ${projectSubtitle(p)}</span></div>
+      ${progressMiniHtml(p)}
+      ${projectPillHtml(p)}
+    </div>`).join('');
+  return `<div class="app-body">
+    <div class="list-head"><h2>Your projects</h2><button class="gd-btn gd-btn-primary" onclick="navigate('#/projects/new')">+ New project</button></div>
+    <div class="project-list">${rows}</div>
+  </div>`;
+}
+
+function renderNew() {
+  return `<div class="app-body narrow">
+    <a class="back-link" onclick="navigate('#/projects')">← Back to projects</a>
+    <h3 style="font-size:20px;">Start a new illustration project</h3>
+    <p class="meta" style="margin-bottom:20px;">Give it a title, then paste the book's text or upload a .txt file.</p>
+    <div class="gd-field">
+      <label for="f-title">Project title <span class="req">*</span></label>
+      <input id="f-title" placeholder="e.g. The Wind in the Willows — cottage-core">
+    </div>
+    <div class="gd-field" style="margin-top:16px;">
+      <label for="book-textarea">Book text <span class="req">*</span></label>
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+        <div id="dropzone-label" style="font-size:13px;font-weight:600;color:var(--grad-ink);">Click to choose a .txt file</div>
+        <div class="hint">Plain text only · used once as context for every step below</div>
+      </div>
+      <input type="file" id="file-input" accept=".txt" style="display:none;" onchange="handleFile(this)">
+      <div class="divider-or">or paste text</div>
+      <textarea id="book-textarea" rows="5" placeholder="Once upon a time, in a small burrow by the river..."></textarea>
+    </div>
+    <div class="gd-field err" id="new-err"></div>
+    <button class="gd-btn gd-btn-primary" style="width:100%;justify-content:center;margin-top:20px;" onclick="createProject()">Create project <span class="gd-arrow">→</span></button>
+  </div>`;
+}
+function wireDropzone() {
+  // no-op placeholder for future drag&drop wiring; click-to-browse covers the demo
+}
+
+function stepperHtml(p) {
+  const idx = statusIndex(p.status); // number of steps completed
+  let html = '<div class="stepper">';
+  STEPS.forEach((s, i) => {
+    const done = i < idx;
+    const isCurrent = i === idx;
+    const cls = done ? 'done' : (isCurrent ? 'current' : 'pending');
+    const sq = done ? `<span class="gd-num-square done">✓</span>` : `<span class="gd-num-square ${isCurrent ? '' : 'gray'}">${i+1}</span>`;
+    html += `<div class="step ${cls}">${sq}<span class="lbl">${s.label}</span></div>`;
+    if (i < STEPS.length - 1) html += `<div class="connector ${i < idx ? 'done' : ''}"></div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function entityCardHtml(item, kind, generating, index) {
+  const ready = kind === 'character' ? item.portraitReady : item.illustrationReady;
+  const artClass = kind === 'character' ? 'art' : 'art chapter';
+  let art;
+  if (ready) {
+    art = `<div class="${artClass}"><span class="placeholder-label">${kind === 'character' ? 'Portrait' : 'Illustration'}</span></div>`;
+  } else if (generating) {
+    art = `<div class="${artClass} pending"><div style="text-align:center;"><span class="spinner"></span><div class="gen-caption">Generating${kind === 'character' ? ' portrait for ' + escapeHtml(item.name) : ' illustration'}…</div></div></div>`;
+  } else {
+    art = `<div class="${artClass} pending"><span class="placeholder-label muted">Not generated yet</span></div>`;
+  }
+  return `<div class="entity-card" style="--stagger:${index * 60}ms">${art}<div class="body"><h5>${escapeHtml(item.name)}</h5><p>${escapeHtml(item.prompt)}</p></div></div>`;
+}
+
+function renderDetail(u, p) {
+  const idx = statusIndex(p.status);
+  const currentStep = STEPS[idx]; // undefined once DONE
+  const stale = isStale(p);
+  const running = p.stepState === 'RUNNING' && !stale;
+
+  let mainPanel = '';
+  if (!currentStep) {
+    mainPanel = `<div class="step-panel"><div class="status-line" style="color:var(--grad-ink);"><span class="gd-num-square done" style="width:20px;height:20px;font-size:11px;">✓</span> All 5 steps complete — nothing left to generate.</div><p class="help">This project is done. Reopen it any time; nothing here regenerates automatically.</p></div>`;
+  } else if (stale) {
+    mainPanel = `<div class="step-panel">
+      <div class="status-line" style="color:var(--grad-ink);">This step was interrupted (probably a page refresh mid-request) and never finished.</div>
+      <p class="help">Nothing before this step was affected — everything already generated is saved. Retrying is safe.</p>
+      <button class="gd-btn gd-btn-secondary" style="margin-top:14px;" onclick="retryStuckStep('${p.id}')">Retry ${currentStep.label}</button>
+    </div>`;
+  } else {
+    const stepLabel = currentStep.label;
+    const captionMap = {
+      STYLE: 'Reading your book text and defining an art style',
+      CHARACTERS: 'Generating the character list from your book’s text',
+      PORTRAITS: 'Generating character portraits',
+      CHAPTERS: 'Generating a chapter illustration prompt',
+      ILLUSTRATIONS: 'Generating the chapter illustration',
+    };
+    const isStyleStep = currentStep.key === 'STYLE' && !running;
+    const styleField = isStyleStep
+      ? `<div class="gd-field" style="margin-bottom:14px;">
+          <label for="style-input">Art style (optional)</label>
+          <input id="style-input" placeholder="Leave blank to let Gemini choose a style based on your book">
+        </div>`
+      : '';
+    const buttonOnclick = currentStep.key === 'STYLE' ? `runStyleStep('${p.id}')` : `runStep('${p.id}','${currentStep.key}')`;
+    mainPanel = `<div class="step-panel">
+      ${running
+        ? `<div class="status-line"><span class="spinner"></span> ${captionMap[currentStep.key]} — usually a couple of seconds in this demo, longer for real Gemini calls…</div>`
+        : `<div class="status-line" style="color:var(--grad-ink);">Ready for the next step: <b>${stepLabel}</b>.</div>`}
+      ${styleField}
+      <p class="help">Reopening this page mid-step won't fire a second request — it just shows the same in-flight state until it lands.</p>
+      <button class="gd-btn gd-btn-primary" style="margin-top:14px;" ${running ? 'disabled' : ''} onclick="${buttonOnclick}">
+        ${running ? 'Generating…' : 'Generate ' + stepLabel} ${running ? '' : '<span class="gd-arrow">→</span>'}
+      </button>
+    </div>`;
+  }
+
+  const portraitsRunning = running && currentStep && currentStep.key === 'PORTRAITS';
+  const illustrationsRunning = running && currentStep && currentStep.key === 'ILLUSTRATIONS';
+
+  // Newest-generated section renders on top: Chapters (step 4) above Characters (step 2).
+  let entitiesHtml = '';
+  if (p.chapters.length) {
+    entitiesHtml += `<div class="panel-title"><h3>Chapters (${p.chapters.length})</h3></div>
+      <div class="entity-grid" style="grid-template-columns:1fr;margin-bottom:28px;">${p.chapters.map((c, i) => entityCardHtml(c, 'chapter', illustrationsRunning, i)).join('')}</div>`;
+  }
+  if (p.characters.length) {
+    entitiesHtml += `<div class="panel-title"><h3>Characters (${p.characters.length})</h3></div>
+      <div class="entity-grid">${p.characters.map((c, i) => entityCardHtml(c, 'character', portraitsRunning, i)).join('')}</div>`;
+  }
+
+  const bookTextTruncated = p.bookText.replace(/\s+/g, ' ').trim().length > 220;
+  const sideNote = p.style
+    ? `<div class="side-note"><h5>Style</h5><p>${escapeHtml(p.style)}</p></div>`
+    : `<div class="side-note"><h5>Book text</h5><p style="font-style:italic;">${escapeHtml(snippet(p.bookText, 220))}</p>
+        ${bookTextTruncated ? `<button type="button" class="gd-btn gd-btn-ghost gd-btn-sm" style="padding-left:0;margin-top:8px;" onclick="openBookModal('${p.id}')">Read full text →</button>` : ''}
+      </div>`;
+
+  return `<div class="app-body">
+    <a class="back-link" onclick="navigate('#/projects')">← Back to projects</a>
+    <h2 style="font-size:22px;margin-bottom:4px;">${escapeHtml(p.title)}</h2>
+    <p class="meta" style="margin-bottom:24px;">Created ${new Date(p.createdAt).toLocaleDateString()} by ${escapeHtml(u.name)}</p>
+    ${stepperHtml(p)}
+    <div class="detail-grid">
+      <div>${mainPanel}${entitiesHtml ? '<div style="margin-top:28px;">' + entitiesHtml + '</div>' : ''}</div>
+      <div>${sideNote}</div>
+    </div>
+  </div>`;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+render();
+</script>
+</body>
+</html>
