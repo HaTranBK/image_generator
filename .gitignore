@@ -41,3 +41,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
+# User uploads (book text, portraits, illustrations — never commit)
+uploads/
+backend/uploads/
+
+# Prisma v7 generated client
+backend/generated/
