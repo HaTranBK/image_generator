@@ -26,7 +26,8 @@ The `app-demo.html` from the assessment is the **floor** — match or exceed it 
 - **TanStack Query cache invalidation**: After WS `step:done` → invalidate `['project', id]` query so sidebar/header reflect new state.
 - **Stuck recovery button**: Show "Force Retry" after 60s of `step:running` state in UI.
 - **Error state**: Show error message + "Retry this step" button. No full page error.
-- **Session token**: Store JWT in `httpOnly` cookie OR `localStorage` (simpler for assessment scope). Attach via Axios interceptor (already configured).
+- **Session token**: Store JWT in `httpOnly cookie` (more secure, prevents XSS). NestJS sets `res.cookie('token', jwt, { httpOnly: true, sameSite: 'strict' })`. Axios must use `withCredentials: true`.
+<!-- Updated: Validation Session 1 - switch JWT storage from localStorage to httpOnly cookie -->
 
 ---
 
@@ -192,78 +193,54 @@ export const useCreateProject = () => useMutation({ mutationFn: api.createProjec
 
 ---
 
-## Implementation Steps
+## Implementation Steps (Test-First Workflow)
 
+### Step A: Setup & Installation
 1. **Install socket.io-client**
    ```bash
    cd frontend
    npm install socket.io-client
    ```
 
-2. **Update `apiClient.ts`** — ensure Axios base URL, JWT interceptor, error handling
+2. **Scaffold Component Skeletons**
+   - Create bare skeleton React components under `components/` and page skeletons under `app/` so the tests can import them.
 
-3. **Create `hooks/useAuth.ts`** — store/read JWT, `signOut()` clears token + redirects
+### Step B: Write Tests First (TDD)
+3. **Write Component & Page Tests**
+   - **`Stepper.spec.tsx`**: Assert that it renders 5 steps, showing correct statuses (Done ✓, Current, and Pending) based on the value of `currentStep`.
+   - **`CharacterCard.spec.tsx`**: Test that the card renders character metadata, displays a loading skeleton when the image is pending, and renders the image once the URL is received.
+   - **`StepActionButton.spec.tsx`**: Assert correct button labels (e.g. "Generate Style", "Generate Characters"); test that it is disabled when `stepState` is `running`; test that it shows a retry option when `stepState` is `failed`.
+   - **`projects.page.spec.tsx`**: Test empty states (when no projects exist) and loading skeletons (during API fetches).
+4. **Run Tests to Verify Failure**
+   - Run the frontend test command to ensure these assertions fail on the skeletons.
 
-4. **Build Identity page** (`/`)
-   - Form with name + email validation
-   - On success: store JWT, push to `/projects`
-   - Protected: if already logged in → redirect to `/projects`
-
-5. **Build Project List page** (`/projects`)
-   - `useProjects()` hook
-   - Loading skeleton (3 cards)
-   - Empty state component
-   - `ProjectCard` with status pill + 5-step progress bar
-   - "New Project" button
-
-6. **Build New Project page** (`/projects/new`)
-   - Tabbed interface: Upload vs Paste
-   - `FileReader` API for client-side .txt reading
-   - Form validation before submit
-   - `useCreateProject()` mutation
-
-7. **Build Project Detail page** (`/projects/:id`)
-   - `useProject(id)` for initial data
-   - `useWebSocket(id)` custom hook for WS connection + cache updates
-   - `Stepper` component driven by `currentStep`
-   - Style section (show when available)
-   - `CharacterCard` × N (with portrait loading skeleton → image reveal)
-   - `ChapterCard` × N (with illustration loading skeleton → image reveal)
-   - `StepActionButton` — context switch on `currentStep`
-   - Step 1 UI: optional style text input inline
-   - In-progress: animated current step indicator
-   - Error: error message + "Retry" button
-   - Stuck: "Force Retry" button after 60s timeout
-
-8. **Design system / global CSS**
-   - Dark mode preferred (modern, premium)
-   - Smooth card transitions for image reveal
-   - Status pill colors: Draft=grey, In Progress=blue, Done=green
-   - Stepper: checkmark for done, pulse animation for current, grey for pending
+### Step C: Write Implementation to Pass Tests
+5. **Update `apiClient.ts`** — Configure Axios base URL, credentials flag for cookies, and generic error handler.
+6. **Implement Components & Hooks**
+   - Build `useWebSocket` hook to handle socket connection, data synchronization, cache invalidations, and disconnects.
+   - Complete `Stepper`, `CharacterCard`, `ChapterCard`, and `StepActionButton` logic.
+7. **Implement Pages**
+   - Build Identity page, Project list page, New project page (with tabbed upload/paste input), and Project Detail page.
+8. **Run Tests to Verify Success**
+   - Verify that all components and screens pass the tests.
 
 ---
 
 ## Todo List
 
 - [ ] Install `socket.io-client`
-- [ ] Update Axios `apiClient.ts` — JWT interceptor, base URL from env
-- [ ] Create `hooks/useAuth.ts` — JWT store, signOut
-- [ ] Add route protection middleware (redirect to `/` if no token)
-- [ ] Build Identity page with form validation
-- [ ] Build Project List page with loading/empty states
-- [ ] Build `ProjectCard` with status pill + progress bar
-- [ ] Build New Project page with tabbed upload/paste input
-- [ ] Build Project Detail page shell + `Stepper`
-- [ ] Implement `useWebSocket` hook — connect on mount, disconnect on unmount, update TQ cache
-- [ ] Implement `CharacterCard` with portrait reveal animation
-- [ ] Implement `ChapterCard` with illustration reveal animation
-- [ ] Implement `StepActionButton` (context-aware per step)
-- [ ] Implement step 1 style text input (optional)
-- [ ] Implement in-progress state with step name display
-- [ ] Implement error state with retry button
-- [ ] Implement stuck detection (60s timer) + "Force Retry" button
-- [ ] Add sign-out button to all authenticated pages
-- [ ] Polish: animations, typography, spacing, dark mode
+- [ ] Create UI component skeletons & imports
+- [ ] **[Test First]** Create `components/ui/__tests__/Stepper.spec.tsx`
+- [ ] **[Test First]** Create `components/project/__tests__/CharacterCard.spec.tsx`
+- [ ] **[Test First]** Create `components/project/__tests__/StepActionButton.spec.tsx`
+- [ ] **[Test First]** Create `app/__tests__/projects.page.spec.tsx` (loading/empty lists)
+- [ ] Run tests and verify failures
+- [ ] Update `apiClient.ts` (base URL, credentials flag, error parser)
+- [ ] Implement `useWebSocket` hook & authentication logic to pass tests
+- [ ] Implement `Stepper`, `CharacterCard`, and `StepActionButton` to pass tests
+- [ ] Build Identity page, Project list page, New project page, and Project Detail page to pass tests
+- [ ] Polish UI transitions, spacing, typography, and dark mode
+- [ ] Run tests and confirm they all pass successfully
 
 ---
 
@@ -296,7 +273,8 @@ export const useCreateProject = () => useMutation({ mutationFn: api.createProjec
 
 ## Security Considerations
 
-- JWT stored in `localStorage` for simplicity (or `httpOnly` cookie for better XSS protection — document tradeoff in `DECISIONS.md`)
+- JWT stored in `httpOnly cookie` — not accessible via JS, mitigates XSS. NestJS sets cookie on login response, frontend uses `withCredentials: true` in Axios. Tradeoff: requires CORS `credentials: true` config.
+<!-- Updated: Validation Session 1 - httpOnly cookie confirmed, localStorage dropped -->
 - All API calls include `Authorization: Bearer {token}` header (Axios interceptor)
 - Never display raw error messages from Gemini API — catch and normalize
 - Images served from authenticated backend endpoint (not public folder)

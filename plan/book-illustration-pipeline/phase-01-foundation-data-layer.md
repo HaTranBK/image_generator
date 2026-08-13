@@ -17,7 +17,9 @@ Set up the core data model, storage strategy, and project scaffold that all othe
 
 - **Two state fields** are required: `currentStep` (int 0–5) and `stepState` (enum). One enum cannot express "step 3 done, step 4 running".
 - **`stuckAt` timestamp** must be DB-persisted (not in-memory) to survive server restarts.
-- **4 interaction IDs** must be persisted: `bookInteractionId`, `styleInteractionId`, `charactersInteractionId`, `chaptersInteractionId`.
+- **5 interaction IDs** must be persisted: `bookInteractionId`, `styleInteractionId`, `charactersInteractionId`, `chaptersInteractionId` (all text-chain IDs).
+
+<!-- Updated: Validation Session 1 - "4 interaction IDs" → "5 interaction IDs"; chaptersInteractionId added to schema -->
 - **File URI TTL**: Gemini File API URIs expire in 48h → always save `bookText` locally so re-upload is possible.
 - **Images stored locally**: `/uploads/projects/{projectId}/portraits/`, `/uploads/projects/{projectId}/illustrations/`.
 - **Identity is email + name only** — no password, no OAuth. Session via JWT or signed cookie.
@@ -52,7 +54,8 @@ interface Project {
   bookInteractionId: string | null
   styleInteractionId: string | null
   charactersInteractionId: string | null
-  // Image interaction IDs: NOT persisted (new chain per step run)
+  chaptersInteractionId: string | null   // persisted but NOT used as previousInteractionId for image chain
+  // Image interaction IDs: NOT persisted (fresh chain per step run)
 
   // Step results
   style: string | null
@@ -153,14 +156,15 @@ uploads/                         # gitignored, runtime only
 
 ---
 
-## Implementation Steps
+## Implementation Steps (Test-First Workflow)
 
+### Step A: Setup & Scaffolding
 1. **Spin up PostgreSQL via Docker**
    ```bash
    # docker-compose.yml at project root
    docker-compose up -d
    ```
-   `docker-compose.yml` mẫu:
+   `docker-compose.yml` sample:
    ```yaml
    services:
      postgres:
@@ -182,9 +186,10 @@ uploads/                         # gitignored, runtime only
    cd backend
    npm install @prisma/client prisma
    npm install @nestjs/jwt @nestjs/passport passport passport-jwt
+   npm install --save-dev @types/passport-jwt
    ```
 
-3. **Define Prisma schema** (`prisma/schema.prisma`)
+3. **Define Prisma schema** (`prisma/schema.prisma`) and generate clients
    ```prisma
    generator client {
      provider = "prisma-client-js"
@@ -218,6 +223,7 @@ uploads/                         # gitignored, runtime only
      bookInteractionId       String?
      styleInteractionId      String?
      charactersInteractionId String?
+     chaptersInteractionId   String?    // persist for resumability; NOT used as previousInteractionId for image chain
 
      // Step results (stored as JSON)
      style         String?
@@ -241,74 +247,59 @@ uploads/                         # gitignored, runtime only
    npx prisma generate
    ```
 
-4. **Create `common/types.ts`** — export all shared interfaces
+4. **Create Types & Constants**
+   - Create `common/types.ts` and `common/constants.ts` (define limits: `MAX_CHARACTERS = 2`, `MAX_CHAPTERS = 1`, and `STUCK_THRESHOLD_MS`).
 
-5. **Create `common/constants.ts`**
-   ```typescript
-   export const STUCK_THRESHOLD_MS = 5 * 60 * 1000  // 5 minutes
-   export const MAX_CHARACTERS = 2
-   export const MAX_CHAPTERS = 1
-   ```
+### Step B: Write Tests First (TDD)
+5. **Write `StorageService` Tests** (`storage/storage.service.spec.ts`)
+   - Test that it throws when path is invalid.
+   - Test directory creation and file saving/reading.
+6. **Write `UsersRepository` & `ProjectsRepository` Tests** (`users/users.repository.spec.ts`, `projects/projects.repository.spec.ts`)
+   - Test `findOrCreate` user upsert.
+   - Test CRUD for projects.
+   - Test that `isStuck` logic returns true if `stuckAt` is older than `STUCK_THRESHOLD_MS`.
+   - Test that searching for a project automatically marks it as failed if it is stuck.
+7. **Write `AuthService` & `AuthGuard` Tests** (`auth/auth.service.spec.ts`, `auth/auth.guard.spec.ts`)
+   - Test JWT payload signing and decoding.
+   - Test Guard rejects requests missing JWT or containing invalid JWT.
+8. **Run Tests to Verify Failure**
+   - Execute `npm run test` or `npx jest` to verify they fail on missing implementation.
 
-6. **Create `storage/storage.service.ts`**
-   - `saveBookText(projectId, text): Promise<string>` → writes to `uploads/projects/{id}/book.txt`
-   - `saveImage(projectId, type, name, buffer): Promise<string>` → writes PNG to correct subfolder
-   - `getImagePath(projectId, type, name): string`
-   - Ensure `uploads/` directory exists on startup
-
-7. **Create `users/` module**
-   - `UsersService.findOrCreate(email, name)` — no password, upsert by email
-   - `UsersRepository` wrapping Prisma client
-   - Upsert pattern: `prisma.user.upsert({ where: { email }, update: { name }, create: { email, name } })`
-
-8. **Create `projects/` module**
-   - `ProjectsService.create(userId, title, bookText)`
-   - `ProjectsService.findByUser(userId)`
-   - `ProjectsService.findById(id)`
-   - `ProjectsService.isStuck(project)` → `stepState === 'running' && stuckAt > THRESHOLD`
-   - On `findById`: if `isStuck` → auto-mark as `failed`, save, return updated
-   - Note: Prisma returns `Json` columns as `unknown` — cast to typed arrays when reading
-
-9. **Create `auth/` module**
-   - `POST /auth/login` — body `{ email, name }` → upsert user → return JWT
-   - `AuthGuard` — validate JWT on all protected routes
-   - `@CurrentUser()` decorator to extract user from request
-
-10. **Add `AUTH_GUARD` globally** or per-controller (except `/auth/login`)
-
-11. **Create `/uploads` static serving**
-    - NestJS `ServeStaticModule` or custom guard-protected route
-    - Auth-check before serving images (projects are user-scoped)
+### Step C: Write Implementation to Pass Tests
+9. **Implement `StorageService`** (`storage/storage.service.ts`)
+10. **Implement `UsersRepository` & `UsersService`**
+11. **Implement `ProjectsRepository` & `ProjectsService`**
+12. **Implement `AuthService`, `AuthGuard`, and `@CurrentUser()` decorator**
+13. **Configure global auth guard** (with metadata bypass for `/auth/login`)
+14. **Run Tests to Verify Success**
+    - Run the tests again to ensure all tests now pass.
 
 ---
 
 ## Todo List
 
-- [ ] Create `docker-compose.yml` with PostgreSQL service
-- [ ] Add `DATABASE_URL` to `.env.example` (`postgresql://postgres:postgres@localhost:5432/book_illustration`)
-- [ ] Install Prisma + `@prisma/client`
-- [ ] Write `prisma/schema.prisma` with User + Project models
-- [ ] Run `prisma migrate dev --name init` + `prisma generate`
-- [ ] Define User + Project schema
-- [ ] Create `common/types.ts` and `constants.ts`
-- [ ] Create `StorageService` (book text + image file I/O)
-- [ ] Create `UsersService` with `findOrCreate`
-- [ ] Create `ProjectsService` with all CRUD + `isStuck` logic
-- [ ] Create `AuthService` — email+name → JWT
-- [ ] Create `AuthGuard` and `@CurrentUser()` decorator
-- [ ] Wire `uploads/` directory creation on app bootstrap
-- [ ] Add auth-protected image serving endpoint
+- [ ] Spin up Postgres database via Docker
+- [ ] Define Prisma models & run migrations/generate
+- [ ] Create `common/types.ts` and `common/constants.ts`
+- [ ] **[Test First]** Create `storage/storage.service.spec.ts`
+- [ ] **[Test First]** Create `users/users.repository.spec.ts`
+- [ ] **[Test First]** Create `projects/projects.repository.spec.ts` (with stuck validation, caps limit verification)
+- [ ] **[Test First]** Create `auth/auth.service.spec.ts` and `auth/auth.guard.spec.ts`
+- [ ] Run tests and verify failures
+- [ ] Implement `StorageService` to pass tests
+- [ ] Implement `UsersService` and repository to pass tests
+- [ ] Implement `ProjectsService` (CRUD, stuck auto-fail detection, typed JSON arrays casting) to pass tests
+- [ ] Implement `AuthService` & `AuthGuard` to pass tests
+- [ ] Run tests and confirm they all pass successfully
 
 ---
 
 ## Success Criteria
 
-- `POST /auth/login` with `{email, name}` returns JWT
-- `GET /projects` returns user's projects (empty array if none)
-- `POST /projects` creates project, saves `book.txt` to disk
-- `GET /projects/:id` returns full project state
-- Stuck detection: if `stepState=running` and `stuckAt` > 5min → returns `stepState=failed`
-- `uploads/projects/{id}/book.txt` exists after project creation
+- Running `npm run test` executes the schema, database, storage, and authentication tests successfully.
+- Database correctly enforces relations and limits.
+- Auth endpoints sign and verify JWT correctly.
+- Stuck detection is validated by test suites before the service implementation was marked complete.
 
 ---
 

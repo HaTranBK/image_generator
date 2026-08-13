@@ -219,68 +219,45 @@ Before submitting, run this full walkthrough manually:
 
 ## Implementation Steps
 
-1. **Backend tests**
-   ```bash
-   cd backend
-   npx jest --coverage
-   ```
-   - Write `pipeline.service.spec.ts` with mocked GeminiService
-   - Write `projects.service.spec.ts` for state transitions
+1. **Verify Test Suites**
+   - Run both backend tests and frontend tests to ensure everything is passing after implementation:
+     ```bash
+     cd backend && npm run test
+     cd ../frontend && npm run test
+     ```
 
-2. **Frontend tests**
-   ```bash
-   cd frontend
-   npm test -- --watchAll=false
-   ```
-   - Write component spec files using React Testing Library
+2. **Fill `TESTING.md`**
+   - Detail the TDD methodology followed.
+   - Run the final test suite and copy-paste the actual terminal test execution outputs directly into `TESTING.md`.
 
-3. **Fill `TESTING.md`**
-   - Write strategy section
-   - Paste actual test run output (copy terminal output)
+3. **Fill `DECISIONS.md`**
+   - Document all design trade-offs, model versions chosen, state machine choices, and JWT httpOnly cookie decision.
+   - Document at least 3 concrete cases where AI implementations were overridden to ensure assessment guidelines.
 
-4. **Fill `DECISIONS.md`** final entries
-   - Add all missing decisions
-   - Add ≥3 AI override examples
-   - Write "one more day" answer (already done — verify it's good)
+4. **Create Scripts (`start.sh`, `test.sh` and Windows PowerShell equivalents)**
+   - Create `start.sh` & `test.sh` for Linux/bash environments.
+   - Create `start.ps1` & `test.ps1` for Windows environments to run the servers and tests in one command.
 
-5. **Create `start.sh` and `test.sh`** (or equivalent scripts)
-   ```bash
-   # start.sh
-   #!/bin/bash
-   cd backend && npm run start:dev &
-   cd frontend && npm run dev &
-   wait
-   ```
-   ```bash
-   # test.sh
-   #!/bin/bash
-   cd backend && npm test
-   cd frontend && npm test -- --watchAll=false
-   ```
+5. **Manual E2E Walkthrough**
+   - Execute the 12-step manual walkthrough (Identity -> Project List -> Create -> Step 1-5 runs -> WS sync -> Stuck simulation).
 
-6. **Final polish pass**
-   - Verify `.env.example` has all required vars
-   - Verify `README.md` has: one-command start, one-command test, env vars, architecture overview
-   - Check git history: meaningful commit messages, no single giant commit
-   - Remove any hardcoded keys or secrets
+6. **Final Submission Readiness**
+   - Verify `.env.example` has all placeholders.
+   - Run a clean clone/setup test.
 
 ---
 
 ## Todo List
 
-- [ ] Write `pipeline.service.spec.ts` — step ordering + duplicate guard + stuck detection
-- [ ] Write `projects.service.spec.ts` — state transitions + cap enforcement
-- [ ] Write `Stepper.spec.tsx`
-- [ ] Write `CharacterCard.spec.tsx`
-- [ ] Write `StepActionButton.spec.tsx`
-- [ ] Write `projects.page.spec.tsx` — empty/loading states
-- [ ] Run tests, fix failures, paste output into `TESTING.md`
-- [ ] Fill `DECISIONS.md` with all required decisions + ≥3 AI overrides
+- [ ] Run backend tests and confirm 100% pass rate
+- [ ] Run frontend tests and confirm 100% pass rate
+- [ ] Document final decisions and AI overrides in `DECISIONS.md`
+- [ ] Write the TDD testing report in `TESTING.md` with raw test output
 - [ ] Create `start.sh` and `test.sh` scripts
+- [ ] Create `start.ps1` and `test.ps1` scripts for Windows users
+- [ ] Complete the 12-step manual E2E walkthrough
 - [ ] Verify `.env.example` completeness
-- [ ] Write `README.md` architecture overview section
-- [ ] Manual E2E walkthrough (all 12 steps above)
-- [ ] Final git history review: meaningful messages, no secrets
+- [ ] Review git log for clean commits and no leaked keys
 
 ---
 

@@ -6,27 +6,18 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-});
-
-// Attach session token from localStorage (set on login)
-apiClient.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('session_token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-  }
-  return config;
+  // Required for httpOnly cookie-based auth (session_token cookie)
+  withCredentials: true,
 });
 
 // Centralised error handling — log + rethrow so React Query surfaces it
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // 401 means cookie is invalid/expired — clear any stale client-side auth state
     if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('session_token');
-      }
+      // No localStorage to clear — cookie is managed by the browser
+      // Let React Query / auth context handle the redirect
     }
     return Promise.reject(error);
   },
