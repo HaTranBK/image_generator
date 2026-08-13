@@ -15,6 +15,10 @@ jobs:
   backend-ci:
     name: Backend CI
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/book_illustration"
+      JWT_SECRET: "bachkhoa"
+      GEMINI_API_KEY: "dummy-key-for-ci"
 
     steps:
       - name: Checkout repository
