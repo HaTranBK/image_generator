@@ -8,7 +8,7 @@ import {
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Public } from './public.decorator';
@@ -45,10 +45,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() loginDto: LoginDto,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Res({ passthrough: true }) res: any,
+
+    @Res({ passthrough: true }) res: Response,
   ) {
-    const { token, user } = await this.authService.login(loginDto.email, loginDto.name);
+    const { token, user } = await this.authService.login(
+      loginDto.email,
+      loginDto.name,
+    );
 
     res.cookie(AUTH_COOKIE_NAME, token, {
       httpOnly: true,
@@ -73,8 +76,7 @@ export class AuthController {
    */
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  logout(@Res({ passthrough: true }) res: any) {
+  logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
     return { message: 'Logged out successfully' };
   }

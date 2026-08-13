@@ -12,8 +12,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       // Extract JWT from httpOnly cookie (preferred) or Authorization header (fallback)
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (req: Request) => {
-          return req?.cookies?.[AUTH_COOKIE_NAME] ?? null;
+        (req: Request): string | null => {
+          const cookies = req?.cookies as Record<string, string> | undefined;
+          return cookies?.[AUTH_COOKIE_NAME] ?? null;
         },
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),

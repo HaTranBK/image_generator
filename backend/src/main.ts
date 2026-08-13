@@ -1,8 +1,7 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const cookieParser = require('cookie-parser');
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -22,16 +21,16 @@ async function bootstrap() {
   // Global validation pipe — validates all DTOs
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,       // strip unknown properties
+      whitelist: true, // strip unknown properties
       forbidNonWhitelisted: true,
-      transform: true,       // auto-transform payloads to DTO classes
+      transform: true, // auto-transform payloads to DTO classes
     }),
   );
 
   // CORS — allow frontend origin in development
   app.enableCors({
     origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
-    credentials: true,      // required for cookies to be sent cross-origin
+    credentials: true, // required for cookies to be sent cross-origin
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
@@ -40,4 +39,6 @@ async function bootstrap() {
   logger.log(`Server running on http://localhost:${port}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  new Logger('Bootstrap').error(err);
+});

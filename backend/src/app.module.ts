@@ -9,7 +9,7 @@ import { JwtAuthGuard } from './auth/auth.guard';
 
 @Module({
   imports: [
-    PrismaModule,  // global — PrismaService available everywhere
+    PrismaModule, // global — PrismaService available everywhere
     UsersModule,
     AuthModule,
   ],

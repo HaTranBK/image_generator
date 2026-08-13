@@ -19,7 +19,10 @@ export class AuthService {
    * 2. Sign JWT with user id + email
    * 3. Return the signed token (controller sets it as httpOnly cookie)
    */
-  async login(email: string, name: string): Promise<{ token: string; user: PrismaUser }> {
+  async login(
+    email: string,
+    name: string,
+  ): Promise<{ token: string; user: PrismaUser }> {
     const user = await this.usersService.findOrCreate(email, name);
 
     const payload: JwtPayload = { sub: user.id, email: user.email };
