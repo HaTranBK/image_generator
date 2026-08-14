@@ -6,12 +6,30 @@ echo "========================================="
 echo " Running All Test Suites                 "
 echo "========================================="
 
-echo "-> Running Backend NestJS tests..."
+# 1. Install root dependencies if not present
+if [ ! -d "node_modules" ]; then
+  echo "-> Installing root workspace dependencies..."
+  npm install
+fi
+
+# 2. Run backend tests
+echo "-> Preparing & Running Backend NestJS tests..."
 cd backend
+if [ ! -d "node_modules" ]; then
+  echo "--> Installing backend dependencies..."
+  npm install
+fi
+# Generate prisma client just in case
+npx prisma generate
 npm run test
 
-echo "-> Running Frontend Next.js tests..."
+# 3. Run frontend tests
+echo "-> Preparing & Running Frontend Next.js tests..."
 cd ../frontend
+if [ ! -d "node_modules" ]; then
+  echo "--> Installing frontend dependencies..."
+  npm install
+fi
 npm run test
 
 echo "========================================="
