@@ -36,7 +36,7 @@ export class GeminiService {
   private readonly isMockText: boolean = false;
   private readonly isMockImage: boolean = false;
 
-  // Modern Gemini 3.6 Flash model for text interaction chain
+  // Stable Gemini 1.5 Flash model for text interaction chain
   private readonly TEXT_MODEL = 'gemini-3.6-flash';
   // Gemini 3.1 Flash Image model (Nano Banana 2 family) for visual content generation
   private readonly IMAGE_MODEL = 'gemini-3.1-flash-image';
@@ -143,6 +143,94 @@ export class GeminiService {
       config: { mimeType: 'text/plain', displayName: 'book.txt' },
     });
     return uploadedFile.uri!;
+  }
+
+  /**
+   * Rebuild the interaction chain up to the target step if a session expires.
+   */
+  async rebuildChain(
+    project: Project,
+    targetStep: number,
+  ): Promise<{
+    bookFileUri?: string;
+    bookInteractionId?: string;
+    styleInteractionId?: string;
+    charactersInteractionId?: string;
+  }> {
+    this.logger.log(
+      `Rebuilding interaction chain for project ${project.id} up to step ${targetStep}...`,
+    );
+
+    if (this.isMockText) {
+      return {
+        bookFileUri: 'mock://files/book.txt',
+        bookInteractionId: 'mock-interaction-0',
+        styleInteractionId: 'mock-interaction-1',
+        charactersInteractionId: 'mock-interaction-2',
+      };
+    }
+
+    const bookFileUri = await this.ensureFileUri(project);
+
+    const interaction0 = await this.ai.interactions.create({
+      model: this.TEXT_MODEL,
+      input: [
+        {
+          type: 'document',
+          uri: bookFileUri,
+          mime_type: 'text/plain',
+        } as any,
+        {
+          type: 'text',
+          text: 'I am uploading this book for AI illustration. Please acknowledge you have received it.',
+        } as any,
+      ],
+    });
+    const bookInteractionId = interaction0.id;
+
+    if (targetStep === 1) {
+      return { bookFileUri, bookInteractionId };
+    }
+
+    const userStyle = project.style ?? undefined;
+    let stylePrompt: string;
+    if (userStyle) {
+      stylePrompt = `The user has chosen the following art style for the illustrations: "${userStyle}". Please confirm this style and describe it in detail (2-3 sentences) as it should be applied to all illustrations of this book.`;
+    } else {
+      stylePrompt = `Based on the book's text, themes, and tone, suggest the most appropriate art style for the illustrations. Describe the style in 2-3 sentences. Only output the style description, nothing else.`;
+    }
+
+    const interaction1 = await this.ai.interactions.create({
+      model: this.TEXT_MODEL,
+      input: stylePrompt,
+      previous_interaction_id: bookInteractionId,
+    });
+    const styleInteractionId = interaction1.id;
+
+    if (targetStep === 2) {
+      return { bookFileUri, bookInteractionId, styleInteractionId };
+    }
+
+    const charPrompt = `Based on the book text, identify the main adult characters (maximum 2). For each character, provide:
+- name: the character's name
+- prompt: a detailed image generation prompt for their portrait, in the established art style
+
+Respond ONLY with a valid JSON array, no markdown, no explanation:
+[{"id": "char-1", "name": "...", "prompt": "..."}, ...]`;
+
+    const interaction2 = await this.ai.interactions.create({
+      model: this.TEXT_MODEL,
+      input: charPrompt,
+      previous_interaction_id: styleInteractionId,
+    });
+    const charactersInteractionId = interaction2.id;
+
+    return {
+      bookFileUri,
+      bookInteractionId,
+      styleInteractionId,
+      charactersInteractionId,
+    };
   }
 
   /**

@@ -3,351 +3,64 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createProject } from "../../../lib/projects.api";
-
-const PRESET_STYLES = ["Anime", "Realistic", "Cartoon", "Oil Painting"];
+import NewProjectView from "@/components/pages/newProject";
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [stylePreference, setStylePreference] = useState("Anime");
-  const [customStyle, setCustomStyle] = useState("");
-  const [bookText, setBookText] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-
-  // Validation errors
-  const [errors, setErrors] = useState<{
-    title?: string;
-    file?: string;
-    bookText?: string;
-    general?: string;
-  }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDragActive, setIsDragActive] = useState(false);
+  const [generalError, setGeneralError] = useState<string | undefined>(
+    undefined,
+  );
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setIsDragActive(true);
-    } else if (e.type === "dragleave") {
-      setIsDragActive(false);
-    }
-  };
-
-  const handleFileContent = (selectedFile: File) => {
-    setErrors((prev) => ({ ...prev, file: undefined }));
-    if (!selectedFile.name.endsWith(".txt")) {
-      setErrors((prev) => ({ ...prev, file: "Only .txt files are allowed" }));
-      setFile(null);
-      return;
-    }
-    setFile(selectedFile);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      setBookText(text);
-    };
-    reader.readAsText(selectedFile);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileContent(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileContent(e.target.files[0]);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const newErrors: { title?: string; bookText?: string } = {};
-
-    if (!title.trim()) {
-      newErrors.title = "Title is required";
-    }
-    if (!bookText.trim()) {
-      newErrors.bookText = "Book text is required (paste it or upload a file)";
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
+  const handleSubmit = async (data: {
+    title: string;
+    style?: string;
+    bookText: string;
+    file: File | null;
+  }) => {
     setIsSubmitting(true);
-    setErrors({});
+    setGeneralError(undefined);
 
     try {
-      const finalStyle =
-        stylePreference === "Custom" ? customStyle.trim() : stylePreference;
+      let payload:
+        FormData | { title: string; style?: string; bookText: string };
+      if (data.file) {
+        payload = new FormData();
+        payload.append("title", data.title);
+        if (data.style) {
+          payload.append("style", data.style);
+        }
+        payload.append("file", data.file);
+      } else {
+        payload = {
+          title: data.title,
+          style: data.style,
+          bookText: data.bookText,
+        };
+      }
 
-      // Submit via JSON structure for unified paste/extracted text flow
-      const project = await createProject({
-        title: title.trim(),
-        style: finalStyle || undefined,
-        bookText: bookText.trim(),
-      });
-
+      const project = await createProject(payload);
       router.push(`/projects/${project.id}`);
     } catch (err) {
       console.error(err);
       const errorResponse = err as {
         response?: { data?: { message?: string } };
       };
-      setErrors({
-        general:
-          errorResponse.response?.data?.message ||
+      setGeneralError(
+        errorResponse.response?.data?.message ||
           "Failed to create project. Please try again.",
-      });
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white font-sans flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 backdrop-blur-md shadow-2xl relative overflow-hidden">
-        {/* Glow effect */}
-        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-violet-600/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-violet-600/5 blur-3xl" />
-
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-              Create New Project
-            </h1>
-            <p className="mt-1.5 text-sm text-zinc-400">
-              Provide book text via upload or direct pasting, then set
-              illustration style.
-            </p>
-          </div>
-          <button
-            onClick={() => router.push("/")}
-            className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-2.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-
-        {errors.general && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-            {errors.general}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Project Title */}
-          <div>
-            <label
-              htmlFor="title-input"
-              className="block text-sm font-semibold text-zinc-300 mb-2"
-            >
-              Project Title
-            </label>
-            <input
-              id="title-input"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., The Wind in the Willows"
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-950/50 px-4 py-3 text-sm placeholder-zinc-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition"
-              disabled={isSubmitting}
-            />
-            {errors.title && (
-              <p className="mt-1 text-xs text-red-400">{errors.title}</p>
-            )}
-          </div>
-
-          {/* Style Preference */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label
-                htmlFor="style-select"
-                className="block text-sm font-semibold text-zinc-300 mb-2"
-              >
-                Art Style Preference
-              </label>
-              <select
-                id="style-select"
-                value={stylePreference}
-                onChange={(e) => setStylePreference(e.target.value)}
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition text-zinc-200"
-                disabled={isSubmitting}
-              >
-                {PRESET_STYLES.map((style) => (
-                  <option key={style} value={style} className="bg-zinc-950">
-                    {style}
-                  </option>
-                ))}
-                <option value="Custom" className="bg-zinc-950">
-                  Custom Style...
-                </option>
-              </select>
-            </div>
-
-            {stylePreference === "Custom" && (
-              <div>
-                <label
-                  htmlFor="custom-style-input"
-                  className="block text-sm font-semibold text-zinc-300 mb-2"
-                >
-                  Custom Art Style
-                </label>
-                <input
-                  id="custom-style-input"
-                  type="text"
-                  value={customStyle}
-                  onChange={(e) => setCustomStyle(e.target.value)}
-                  placeholder="e.g., Watercolor, Cyberpunk, Pencil Sketch"
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950/50 px-4 py-3 text-sm placeholder-zinc-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition"
-                  disabled={isSubmitting}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Book Text Field with both drag&drop and direct paste */}
-          <div>
-            <span className="block text-sm font-semibold text-zinc-300 mb-2">
-              Book text
-            </span>
-
-            {/* File Upload Zone */}
-            <div
-              data-testid="file-dropzone"
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              className={`relative border border-dashed rounded-2xl p-6 flex flex-col items-center justify-center transition-all ${
-                isDragActive
-                  ? "border-violet-500 bg-violet-600/5"
-                  : file
-                    ? "border-zinc-700 bg-zinc-950/20"
-                    : "border-zinc-800 bg-zinc-950/30 hover:border-zinc-700"
-              }`}
-            >
-              <input
-                id="file-upload-input"
-                data-testid="file-input"
-                type="file"
-                accept=".txt"
-                onChange={handleFileChange}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                disabled={isSubmitting}
-              />
-
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`h-8 w-8 mb-2 transition-colors ${
-                  file ? "text-violet-400" : "text-zinc-500"
-                }`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-
-              {file ? (
-                <div className="text-center">
-                  <p className="text-sm font-semibold text-violet-400">
-                    ✓ {file.name} loaded
-                  </p>
-                  <p className="text-xs text-zinc-500 mt-0.5">
-                    {(file.size / 1024).toFixed(1)} KB
-                  </p>
-                </div>
-              ) : (
-                <div className="text-center">
-                  <p className="text-sm font-medium text-zinc-300">
-                    <span className="text-violet-400 font-semibold">
-                      Click to choose a .txt file
-                    </span>{" "}
-                    or drag & drop
-                  </p>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Plain text only · used once as context for every step
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center my-4 text-xs text-zinc-500 uppercase tracking-widest before:flex-1 before:border-t before:border-zinc-800 before:mr-3 after:flex-1 after:border-t after:border-zinc-800 after:ml-3">
-              or paste text
-            </div>
-
-            {/* Paste text area */}
-            <textarea
-              id="book-textarea"
-              rows={6}
-              value={bookText}
-              onChange={(e) => setBookText(e.target.value)}
-              placeholder="Once upon a time, in a small burrow by the river..."
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-950/50 px-4 py-3 text-sm placeholder-zinc-650 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition resize-y"
-              disabled={isSubmitting}
-            />
-
-            {errors.bookText && (
-              <p className="mt-1.5 text-xs text-red-400">{errors.bookText}</p>
-            )}
-          </div>
-
-          {/* Form Actions */}
-          <div className="pt-4 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => router.push("/")}
-              className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-5 py-2.5 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-850 hover:text-white"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500 shadow-lg shadow-violet-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Creating...
-                </>
-              ) : (
-                "Create Project"
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <NewProjectView
+      onSubmit={handleSubmit}
+      isSubmitting={isSubmitting}
+      generalError={generalError}
+      onCancel={() => router.push("/")}
+    />
   );
 }

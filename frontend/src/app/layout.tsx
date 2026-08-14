@@ -15,21 +15,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Book Illustration Studio",
-  description: "Turn a book's text into character portraits and chapter illustrations using the Gemini API.",
+  title: "GRADION IG — AI Book Illustration Generator",
+  description:
+    "Turn your book's text into stunning character portraits and chapter illustrations using AI-powered pipelines.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col bg-[#fafaf8]">
         <ReactQueryProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <AuthProvider>{children}</AuthProvider>
         </ReactQueryProvider>
       </body>
     </html>
