@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  name      String
+  createdAt DateTime  @default(now())
+  projects  Project[]
+}
+
+model Project {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  title  String
+
+  // Book storage
+  bookText     String
+  bookFilePath String
+
+  // Gemini context
+  bookFileUri             String?
+  bookInteractionId       String?   // kept for reference (unused in JS SDK approach)
+  styleInteractionId      String?   // kept for reference
+  charactersInteractionId String?   // kept for reference
+  chaptersInteractionId   String?   // persist for resumability
+  textChainHistory        Json      @default("[]")  // Gemini chat history for text chain (Steps 1,2,4)
+
+  // Step results (stored as JSON)
+  style         String?
+  characters    Json    @default("[]")
+  chapters      Json    @default("[]")
+  portraits     Json    @default("[]")
+  illustrations Json    @default("[]")
+
+  // State machine
+  currentStep  Int      @default(0) // 0–5
+  stepState    String   @default("idle") // idle | running | failed
+  stuckAt      DateTime?
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
