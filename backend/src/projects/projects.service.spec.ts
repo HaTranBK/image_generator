@@ -125,8 +125,8 @@ describe('ProjectsService', () => {
     it('should return projects belonging to the user', async () => {
       const userId = 'user-123';
       const mockProjects = [
-        { id: 'proj-1', userId, title: 'Proj 1' },
-        { id: 'proj-2', userId, title: 'Proj 2' },
+        { id: 'proj-1', userId, title: 'Proj 1', status: 'Draft' },
+        { id: 'proj-2', userId, title: 'Proj 2', status: 'Draft' },
       ];
       mockPrismaService.project.findMany.mockResolvedValue(mockProjects);
 
@@ -144,7 +144,12 @@ describe('ProjectsService', () => {
     const projectId = 'proj-123';
 
     it('should return the project if it exists and belongs to the user', async () => {
-      const mockProject = { id: projectId, userId, title: 'Proj 1' };
+      const mockProject = {
+        id: projectId,
+        userId,
+        title: 'Proj 1',
+        status: 'Draft',
+      };
       mockPrismaService.project.findUnique.mockResolvedValue(mockProject);
 
       const result = await service.findOneUserProject(userId, projectId);
@@ -163,6 +168,7 @@ describe('ProjectsService', () => {
         id: projectId,
         userId: 'other-user',
         title: 'Proj 1',
+        status: 'Draft',
       };
       mockPrismaService.project.findUnique.mockResolvedValue(mockProject);
 

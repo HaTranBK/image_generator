@@ -9,6 +9,8 @@ frontend/out/
 
 # NestJS build output
 backend/dist/
+coverage/
+backend/coverage/
 
 # Environment files
 .env
