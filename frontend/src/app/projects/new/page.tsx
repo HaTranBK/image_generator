@@ -1,37 +1,41 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createProject } from '../../../lib/projects.api';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createProject } from "../../../lib/projects.api";
 
-const PRESET_STYLES = ['Anime', 'Realistic', 'Cartoon', 'Oil Painting'];
+const PRESET_STYLES = ["Anime", "Realistic", "Cartoon", "Oil Painting"];
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const [title, setTitle] = useState('');
-  const [stylePreference, setStylePreference] = useState('Anime');
-  const [customStyle, setCustomStyle] = useState('');
+  const [title, setTitle] = useState("");
+  const [stylePreference, setStylePreference] = useState("Anime");
+  const [customStyle, setCustomStyle] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  
+
   // Validation errors
-  const [errors, setErrors] = useState<{ title?: string; file?: string; general?: string }>({});
+  const [errors, setErrors] = useState<{
+    title?: string;
+    file?: string;
+    general?: string;
+  }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDragActive, setIsDragActive] = useState(false);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
+    if (e.type === "dragenter" || e.type === "dragover") {
       setIsDragActive(true);
-    } else if (e.type === 'dragleave') {
+    } else if (e.type === "dragleave") {
       setIsDragActive(false);
     }
   };
 
   const validateFile = (selectedFile: File): boolean => {
     setErrors((prev) => ({ ...prev, file: undefined }));
-    if (!selectedFile.name.endsWith('.txt')) {
-      setErrors((prev) => ({ ...prev, file: 'Only .txt files are allowed' }));
+    if (!selectedFile.name.endsWith(".txt")) {
+      setErrors((prev) => ({ ...prev, file: "Only .txt files are allowed" }));
       setFile(null);
       return false;
     }
@@ -43,7 +47,7 @@ export default function NewProjectPage() {
     e.preventDefault();
     e.stopPropagation();
     setIsDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       validateFile(e.dataTransfer.files[0]);
     }
@@ -58,12 +62,12 @@ export default function NewProjectPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: { title?: string; file?: string } = {};
-    
+
     if (!title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = "Title is required";
     }
     if (!file) {
-      newErrors.file = 'Book file is required';
+      newErrors.file = "Book file is required";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -76,21 +80,29 @@ export default function NewProjectPage() {
 
     try {
       const formData = new FormData();
-      formData.append('title', title.trim());
-      
-      const finalStyle = stylePreference === 'Custom' ? customStyle.trim() : stylePreference;
+      formData.append("title", title.trim());
+
+      const finalStyle =
+        stylePreference === "Custom" ? customStyle.trim() : stylePreference;
       if (finalStyle) {
-        formData.append('style', finalStyle);
+        formData.append("style", finalStyle);
       }
-      
-      formData.append('file', file);
+
+      if (file) {
+        formData.append("file", file);
+      }
 
       const project = await createProject(formData);
       router.push(`/projects/${project.id}`);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
+      const errorResponse = err as {
+        response?: { data?: { message?: string } };
+      };
       setErrors({
-        general: err.response?.data?.message || 'Failed to create project. Please try again.',
+        general:
+          errorResponse.response?.data?.message ||
+          "Failed to create project. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -115,7 +127,7 @@ export default function NewProjectPage() {
             </p>
           </div>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push("/")}
             className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-2.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
           >
             <svg
@@ -125,7 +137,12 @@ export default function NewProjectPage() {
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -139,7 +156,10 @@ export default function NewProjectPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Project Title */}
           <div>
-            <label htmlFor="title-input" className="block text-sm font-semibold text-zinc-300 mb-2">
+            <label
+              htmlFor="title-input"
+              className="block text-sm font-semibold text-zinc-300 mb-2"
+            >
               Project Title
             </label>
             <input
@@ -151,13 +171,18 @@ export default function NewProjectPage() {
               className="w-full rounded-xl border border-zinc-800 bg-zinc-950/50 px-4 py-3 text-sm placeholder-zinc-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition"
               disabled={isSubmitting}
             />
-            {errors.title && <p className="mt-1 text-xs text-red-400">{errors.title}</p>}
+            {errors.title && (
+              <p className="mt-1 text-xs text-red-400">{errors.title}</p>
+            )}
           </div>
 
           {/* Style Preference */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="style-select" className="block text-sm font-semibold text-zinc-300 mb-2">
+              <label
+                htmlFor="style-select"
+                className="block text-sm font-semibold text-zinc-300 mb-2"
+              >
                 Art Style Preference
               </label>
               <select
@@ -178,9 +203,12 @@ export default function NewProjectPage() {
               </select>
             </div>
 
-            {stylePreference === 'Custom' && (
+            {stylePreference === "Custom" && (
               <div>
-                <label htmlFor="custom-style-input" className="block text-sm font-semibold text-zinc-300 mb-2">
+                <label
+                  htmlFor="custom-style-input"
+                  className="block text-sm font-semibold text-zinc-300 mb-2"
+                >
                   Custom Art Style
                 </label>
                 <input
@@ -198,7 +226,9 @@ export default function NewProjectPage() {
 
           {/* File Upload Zone */}
           <div>
-            <span className="block text-sm font-semibold text-zinc-300 mb-2">Book File (.txt)</span>
+            <span className="block text-sm font-semibold text-zinc-300 mb-2">
+              Book File (.txt)
+            </span>
             <div
               data-testid="file-dropzone"
               onDragEnter={handleDrag}
@@ -207,10 +237,10 @@ export default function NewProjectPage() {
               onDrop={handleDrop}
               className={`relative border border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-all ${
                 isDragActive
-                  ? 'border-violet-500 bg-violet-600/5'
+                  ? "border-violet-500 bg-violet-600/5"
                   : file
-                  ? 'border-zinc-700 bg-zinc-950/20'
-                  : 'border-zinc-800 bg-zinc-950/30 hover:border-zinc-700'
+                    ? "border-zinc-700 bg-zinc-950/20"
+                    : "border-zinc-800 bg-zinc-950/30 hover:border-zinc-700"
               }`}
             >
               <input
@@ -222,11 +252,11 @@ export default function NewProjectPage() {
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 disabled={isSubmitting}
               />
-              
+
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className={`h-10 w-10 mb-3 transition-colors ${
-                  file ? 'text-violet-400' : 'text-zinc-500'
+                  file ? "text-violet-400" : "text-zinc-500"
                 }`}
                 fill="none"
                 viewBox="0 0 24 24"
@@ -242,26 +272,37 @@ export default function NewProjectPage() {
 
               {file ? (
                 <div className="text-center">
-                  <p className="text-sm font-semibold text-zinc-200">{file.name}</p>
-                  <p className="text-xs text-zinc-500 mt-1">{(file.size / 1024).toFixed(1)} KB</p>
+                  <p className="text-sm font-semibold text-zinc-200">
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {(file.size / 1024).toFixed(1)} KB
+                  </p>
                 </div>
               ) : (
                 <div className="text-center">
                   <p className="text-sm font-medium text-zinc-300">
-                    <span className="text-violet-400 font-semibold">Click to upload</span> or drag and drop
+                    <span className="text-violet-400 font-semibold">
+                      Click to upload
+                    </span>{" "}
+                    or drag and drop
                   </p>
-                  <p className="text-xs text-zinc-500 mt-1">Only .txt files up to 10MB allowed</p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Only .txt files up to 10MB allowed
+                  </p>
                 </div>
               )}
             </div>
-            {errors.file && <p className="mt-1.5 text-xs text-red-400">{errors.file}</p>}
+            {errors.file && (
+              <p className="mt-1.5 text-xs text-red-400">{errors.file}</p>
+            )}
           </div>
 
           {/* Form Actions */}
           <div className="pt-4 flex items-center justify-end gap-3">
             <button
               type="button"
-              onClick={() => router.push('/')}
+              onClick={() => router.push("/")}
               className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-5 py-2.5 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-850 hover:text-white"
               disabled={isSubmitting}
             >
@@ -278,7 +319,7 @@ export default function NewProjectPage() {
                   Creating...
                 </>
               ) : (
-                'Create Project'
+                "Create Project"
               )}
             </button>
           </div>

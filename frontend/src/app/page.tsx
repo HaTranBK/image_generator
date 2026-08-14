@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { getProjects } from '../lib/projects.api';
-import { useAuth } from '@/providers/AuthProvider';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useQuery } from "@tanstack/react-query";
+import { getProjects } from "../lib/projects.api";
+import { useAuth } from "@/providers/AuthProvider";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logoutFn } = useAuth();
 
   // Fetch real projects list using TanStack Query
-  const { data: projects = [], isLoading: isProjectsLoading, error: projectsError } = useQuery({
-    queryKey: ['projects'],
+  const { data: projects = [], isLoading: isProjectsLoading } = useQuery({
+    queryKey: ["projects"],
     queryFn: getProjects,
     enabled: isAuthenticated,
   });
@@ -20,7 +20,7 @@ export default function HomePage() {
   // Chuyển hướng nếu chưa đăng nhập
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/login');
+      router.replace("/login");
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -34,14 +34,14 @@ export default function HomePage() {
 
   const getStepName = (step: number) => {
     const steps = [
-      'Upload Book',
-      'Analyze Style',
-      'Generate Characters',
-      'Generate Portraits',
-      'Extract Chapters',
-      'Generate Illustrations',
+      "Upload Book",
+      "Analyze Style",
+      "Generate Characters",
+      "Generate Portraits",
+      "Extract Chapters",
+      "Generate Illustrations",
     ];
-    return steps[step] || 'Unknown';
+    return steps[step] || "Unknown";
   };
 
   return (
@@ -72,7 +72,9 @@ export default function HomePage() {
 
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-zinc-200">{user?.name}</p>
+                <p className="text-sm font-medium text-zinc-200">
+                  {user?.name}
+                </p>
                 <p className="text-xs text-zinc-500">{user?.email}</p>
               </div>
 
@@ -98,7 +100,7 @@ export default function HomePage() {
           </div>
 
           <button
-            onClick={() => router.push('/projects/new')}
+            onClick={() => router.push("/projects/new")}
             className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500 shadow-lg shadow-violet-600/20"
           >
             <svg
@@ -138,10 +140,14 @@ export default function HomePage() {
                 d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
               />
             </svg>
-            <h3 className="font-semibold text-lg text-zinc-300">No projects yet</h3>
-            <p className="text-sm text-zinc-500 mt-1">Get started by creating your first project.</p>
+            <h3 className="font-semibold text-lg text-zinc-300">
+              No projects yet
+            </h3>
+            <p className="text-sm text-zinc-500 mt-1">
+              Get started by creating your first project.
+            </p>
             <button
-              onClick={() => router.push('/projects/new')}
+              onClick={() => router.push("/projects/new")}
               className="mt-4 inline-flex items-center gap-2 rounded-xl bg-violet-600/10 border border-violet-500/20 px-4 py-2 text-sm font-semibold text-violet-400 hover:bg-violet-600/20 transition"
             >
               Create Project
@@ -184,11 +190,11 @@ export default function HomePage() {
                       </span>
                     </div>
 
-                    {project.stepState === 'running' ? (
+                    {project.stepState === "running" ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2 py-0.5 text-xs font-medium text-yellow-500 animate-pulse">
                         Running
                       </span>
-                    ) : project.stepState === 'failed' ? (
+                    ) : project.stepState === "failed" ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
                         Failed
                       </span>

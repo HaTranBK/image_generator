@@ -22,6 +22,12 @@ This document records the design decisions made for the Book Illustration Studio
 - **Where we landed**: We enforced a strict 1-to-1 mapping between a Project and its book file on disk. The storage service will overwrite the existing file if it exists, keeping the storage clean and avoiding unnecessary file versioning overhead.
 - **Cost**: No extra storage or indexing cost; simplifies disk management and cleanup.
 
+## 4. Git Commit Verification: Husky & lint-staged in a Monorepo
+- **Proposed by**: AI proposed a standard single-folder configuration or using global pnpm workspaces.
+- **Pushback**: I pushed back. The repository contains separate backend and frontend projects using standard `npm` (indicated by `package-lock.json` in each directory), but Git hooks must be registered at the repository root level. We needed a clean way to orchestrate checks without coupling them directly to a single package.
+- **Where we landed**: Initialized a root-level `package.json` to manage development tools, installing `husky`, `lint-staged`, and `prettier` there. We then configured a root-level `.lintstagedrc.mjs` that maps changed files to their respective projects and uses `npx --prefix` to run linting within the project directories.
+- **Cost**: Introduces a root `node_modules` folder and root configuration files, but keeps the git hook configuration completely isolated and prevents lint-checking the entire repository during every commit.
+
 ---
 
 ## If you had one more day, what would you build next and why?
