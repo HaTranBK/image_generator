@@ -34,6 +34,24 @@ This document records the design decisions made for the Book Illustration Studio
 - **Where we landed**: Upgraded the text model to `gemini-3.6-flash` and image model to `gemini-3.1-flash-image` using standard `generateContent` typed objects. We then split the mock flags into two distinct behaviors: `MOCK_GEMINI` (full pipeline mock) and `MOCK_IMAGES` (mock only image generation). When `MOCK_IMAGES=true` is set, steps 1, 2, and 4 call the real Gemini API to analyze the uploaded book, while steps 3 and 5 generate mock 1x1 violet PNG images locally to bypass quota limits seamlessly.
 - **Cost**: Adds extra environment configurations and local asset generators, but allows developers to test real book analysis workflows for free without getting blocked by Google's image generation quota policies.
 
+## 6. Frontend Restructuring: Tightly Decoupled View Components and Page Routing
+- **Proposed by**: AI proposed placing all UI layout, state logic, and Socket listeners directly inside the Next.js App Router folders (e.g., `src/app/projects/[id]/page.tsx`).
+- **Pushback**: I rejected this monolithic approach. Mixing view rendering, complex pipeline timer ticks, and WebSocket subscriptions in the same router entrypoint violates the Single Responsibility Principle, makes testing extremely difficult, and results in unmaintainable files (>500 lines).
+- **Where we landed**: Restructured the frontend according to standard clean architecture guidelines. Page routes inside `src/app` only serve as entry points that fetch initial data and delegate rendering to dedicated views in `src/components/pages/` (e.g., `src/components/pages/projectDetail`). We separated the heavy logic (timers, sockets, caches) into reusable Custom Hooks (`useProjectDetail`) and extracted sub-components (Header, Bento grid, Scene cards) into standalone components, keeping core files under 150 lines.
+- **Cost**: Slightly more directories and import definitions, but improves compile times, visual testing isolation, and code modularity.
+
+## 7. Backend Response Standardization: Global Exception Filters & Interceptors
+- **Proposed by**: AI proposed returning raw database responses from NestJS controllers and manually writing try-catch blocks everywhere or adding generic axios interceptors on the frontend to normalize data on the fly.
+- **Pushback**: I pushed back. Hand-crafting try-catch envelopes in every controller leads to boilerplate code, and raw Prisma entities return non-standardized JS types (e.g., Decimal types from PostgreSQL, unformatted dates) that cause client-side parsing crashes. Manually mapping everything on the client is fragile and error-prone.
+- **Where we landed**: Standardized all API responses at the backend level. We wrapped the NestJS server with a global `HttpExceptionFilter` to format exceptions into a unified `{ code, message, errors }` format, and added a `DecimalSerializerInterceptor` to dynamically format Decimal and Date attributes. All controller responses return a standardized `{ code: 200, message: "Success", payload: T }` envelope, which the frontend API client explicitly unpacks using `.payload`.
+- **Cost**: Increases backend execution overhead slightly due to global interceptor cycles, but guarantees consistent client-server contract compliance.
+
+## 8. Backend Database Decoupling: Repository Pattern
+- **Proposed by**: AI proposed injecting the raw `PrismaService` directly into the NestJS `ProjectsService` and querying ORM functions directly inline.
+- **Pushback**: I rejected direct ORM coupling. Inline Prisma queries make the business logic hard to unit-test (requiring extensive ORM mocks) and tightly couples our domain layer to a specific database tool, preventing future ORM migrations or query tuning optimizations.
+- **Where we landed**: Implemented the **Repository Pattern** by creating a dedicated `ProjectsRepository`. All database writes, updates, and custom saves (e.g., saving portraits and illustrations) are handled exclusively within the repository. We also returned typed monadic results using `neverthrow` (`ok` / `err`) to let the Service layer handle operational states cleanly without throwing raw SQL exceptions.
+- **Cost**: Adds a new repository layer and files, but isolates database operations and simplifies writing highly mockable unit tests for domain business logic.
+
 ---
 
 ## If you had one more day, what would you build next and why?
