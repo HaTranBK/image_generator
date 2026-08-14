@@ -11,12 +11,14 @@ export default function NewProjectPage() {
   const [title, setTitle] = useState("");
   const [stylePreference, setStylePreference] = useState("Anime");
   const [customStyle, setCustomStyle] = useState("");
+  const [bookText, setBookText] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
   // Validation errors
   const [errors, setErrors] = useState<{
     title?: string;
     file?: string;
+    bookText?: string;
     general?: string;
   }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,15 +34,21 @@ export default function NewProjectPage() {
     }
   };
 
-  const validateFile = (selectedFile: File): boolean => {
+  const handleFileContent = (selectedFile: File) => {
     setErrors((prev) => ({ ...prev, file: undefined }));
     if (!selectedFile.name.endsWith(".txt")) {
       setErrors((prev) => ({ ...prev, file: "Only .txt files are allowed" }));
       setFile(null);
-      return false;
+      return;
     }
     setFile(selectedFile);
-    return true;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      setBookText(text);
+    };
+    reader.readAsText(selectedFile);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -49,25 +57,25 @@ export default function NewProjectPage() {
     setIsDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateFile(e.dataTransfer.files[0]);
+      handleFileContent(e.dataTransfer.files[0]);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      validateFile(e.target.files[0]);
+      handleFileContent(e.target.files[0]);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newErrors: { title?: string; file?: string } = {};
+    const newErrors: { title?: string; bookText?: string } = {};
 
     if (!title.trim()) {
       newErrors.title = "Title is required";
     }
-    if (!file) {
-      newErrors.file = "Book file is required";
+    if (!bookText.trim()) {
+      newErrors.bookText = "Book text is required (paste it or upload a file)";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -79,20 +87,16 @@ export default function NewProjectPage() {
     setErrors({});
 
     try {
-      const formData = new FormData();
-      formData.append("title", title.trim());
-
       const finalStyle =
         stylePreference === "Custom" ? customStyle.trim() : stylePreference;
-      if (finalStyle) {
-        formData.append("style", finalStyle);
-      }
 
-      if (file) {
-        formData.append("file", file);
-      }
+      // Submit via JSON structure for unified paste/extracted text flow
+      const project = await createProject({
+        title: title.trim(),
+        style: finalStyle || undefined,
+        bookText: bookText.trim(),
+      });
 
-      const project = await createProject(formData);
       router.push(`/projects/${project.id}`);
     } catch (err) {
       console.error(err);
@@ -123,7 +127,8 @@ export default function NewProjectPage() {
               Create New Project
             </h1>
             <p className="mt-1.5 text-sm text-zinc-400">
-              Upload your book and configure the illustration style.
+              Provide book text via upload or direct pasting, then set
+              illustration style.
             </p>
           </div>
           <button
@@ -224,18 +229,20 @@ export default function NewProjectPage() {
             )}
           </div>
 
-          {/* File Upload Zone */}
+          {/* Book Text Field with both drag&drop and direct paste */}
           <div>
             <span className="block text-sm font-semibold text-zinc-300 mb-2">
-              Book File (.txt)
+              Book text
             </span>
+
+            {/* File Upload Zone */}
             <div
               data-testid="file-dropzone"
               onDragEnter={handleDrag}
               onDragOver={handleDrag}
               onDragLeave={handleDrag}
               onDrop={handleDrop}
-              className={`relative border border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-all ${
+              className={`relative border border-dashed rounded-2xl p-6 flex flex-col items-center justify-center transition-all ${
                 isDragActive
                   ? "border-violet-500 bg-violet-600/5"
                   : file
@@ -255,7 +262,7 @@ export default function NewProjectPage() {
 
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className={`h-10 w-10 mb-3 transition-colors ${
+                className={`h-8 w-8 mb-2 transition-colors ${
                   file ? "text-violet-400" : "text-zinc-500"
                 }`}
                 fill="none"
@@ -272,10 +279,10 @@ export default function NewProjectPage() {
 
               {file ? (
                 <div className="text-center">
-                  <p className="text-sm font-semibold text-zinc-200">
-                    {file.name}
+                  <p className="text-sm font-semibold text-violet-400">
+                    ✓ {file.name} loaded
                   </p>
-                  <p className="text-xs text-zinc-500 mt-1">
+                  <p className="text-xs text-zinc-500 mt-0.5">
                     {(file.size / 1024).toFixed(1)} KB
                   </p>
                 </div>
@@ -283,18 +290,34 @@ export default function NewProjectPage() {
                 <div className="text-center">
                   <p className="text-sm font-medium text-zinc-300">
                     <span className="text-violet-400 font-semibold">
-                      Click to upload
+                      Click to choose a .txt file
                     </span>{" "}
-                    or drag and drop
+                    or drag & drop
                   </p>
                   <p className="text-xs text-zinc-500 mt-1">
-                    Only .txt files up to 10MB allowed
+                    Plain text only · used once as context for every step
                   </p>
                 </div>
               )}
             </div>
-            {errors.file && (
-              <p className="mt-1.5 text-xs text-red-400">{errors.file}</p>
+
+            <div className="flex items-center my-4 text-xs text-zinc-500 uppercase tracking-widest before:flex-1 before:border-t before:border-zinc-800 before:mr-3 after:flex-1 after:border-t after:border-zinc-800 after:ml-3">
+              or paste text
+            </div>
+
+            {/* Paste text area */}
+            <textarea
+              id="book-textarea"
+              rows={6}
+              value={bookText}
+              onChange={(e) => setBookText(e.target.value)}
+              placeholder="Once upon a time, in a small burrow by the river..."
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-950/50 px-4 py-3 text-sm placeholder-zinc-650 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition resize-y"
+              disabled={isSubmitting}
+            />
+
+            {errors.bookText && (
+              <p className="mt-1.5 text-xs text-red-400">{errors.bookText}</p>
             )}
           </div>
 

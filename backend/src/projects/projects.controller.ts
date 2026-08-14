@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import {
   Controller,
   Post,
@@ -7,12 +8,14 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Request } from 'express';
 import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
-import type { User as PrismaUser, Project } from '@prisma/client';
+import type { User as PrismaUser } from '@prisma/client';
 
 @Controller('projects')
 export class ProjectsController {
@@ -20,36 +23,64 @@ export class ProjectsController {
 
   /**
    * POST /projects
-   * Accepts multipart/form-data with a file and project details
+   * Accepts EITHER:
+   *   - multipart/form-data with { title, style?, file (.txt) }
+   *   - application/json with { title, style?, bookText }
+   * Backend detects via content-type header.
    */
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    }),
+  )
   async create(
     @CurrentUser() user: PrismaUser,
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFile() file: any,
     @Body() createProjectDto: CreateProjectDto,
-  ): Promise<Project> {
-    if (!file) {
-      throw new BadRequestException('Book file (.txt) is required');
+    @Req() req: any,
+  ) {
+    const contentType = req.headers['content-type'] ?? '';
+    const isMultipart = contentType.includes('multipart/form-data');
+
+    if (isMultipart) {
+      // --- File upload flow ---
+      if (!file) {
+        throw new BadRequestException('Book file (.txt) is required');
+      }
+
+      const isTextFile = file.originalname.endsWith('.txt');
+      const isTextMime =
+        file.mimetype.startsWith('text/') ||
+        file.mimetype === 'application/octet-stream';
+
+      if (!isTextFile || !isTextMime) {
+        throw new BadRequestException('Only .txt text files are allowed');
+      }
+
+      return this.projectsService.createProject(
+        user.id,
+        createProjectDto.title,
+        createProjectDto.style,
+        file.buffer,
+      );
+    } else {
+      // --- Paste text flow (JSON body) ---
+      const { bookText } = req.body as { bookText?: string };
+      if (!bookText || !bookText.trim()) {
+        throw new BadRequestException(
+          'bookText is required when not uploading a file',
+        );
+      }
+
+      return this.projectsService.createProject(
+        user.id,
+        createProjectDto.title,
+        createProjectDto.style,
+        undefined,
+        bookText,
+      );
     }
-
-    // Input validation: Only UTF-8 text files allowed.
-    // Validate by checking both file extension and MIME type.
-    const isTextFile = file.originalname.endsWith('.txt');
-    const isTextMime =
-      file.mimetype.startsWith('text/') ||
-      file.mimetype === 'application/octet-stream'; // Handle some OS variations for txt mimetypes
-
-    if (!isTextFile || !isTextMime) {
-      throw new BadRequestException('Only .txt text files are allowed');
-    }
-
-    return this.projectsService.createProject(
-      user.id,
-      createProjectDto.title,
-      createProjectDto.style,
-      file.buffer,
-    );
   }
 
   /**
@@ -57,7 +88,7 @@ export class ProjectsController {
    * Lists all projects belonging to the logged-in user
    */
   @Get()
-  async findAll(@CurrentUser() user: PrismaUser): Promise<Project[]> {
+  async findAll(@CurrentUser() user: PrismaUser) {
     return this.projectsService.findUserProjects(user.id);
   }
 
@@ -66,10 +97,7 @@ export class ProjectsController {
    * Retrieves a specific project if it belongs to the logged-in user
    */
   @Get(':id')
-  async findOne(
-    @CurrentUser() user: PrismaUser,
-    @Param('id') id: string,
-  ): Promise<Project> {
+  async findOne(@CurrentUser() user: PrismaUser, @Param('id') id: string) {
     return this.projectsService.findOneUserProject(user.id, id);
   }
 }

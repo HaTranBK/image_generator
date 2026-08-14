@@ -8,4 +8,8 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   style?: string;
+
+  @IsOptional()
+  @IsString()
+  bookText?: string;
 }

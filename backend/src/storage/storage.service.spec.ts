@@ -42,11 +42,7 @@ describe('StorageService', () => {
     it('should create project directory and save book text correctly', async () => {
       const projectId = 'test-project-1';
       const content = 'Hello world, this is a test book content.';
-      const relativePath = await service.saveBookText(
-        projectId,
-        'book.txt',
-        content,
-      );
+      const relativePath = await service.saveBookText(projectId, content);
 
       expect(relativePath).toContain(
         path.join('uploads', 'projects', projectId, 'book.txt'),
@@ -64,7 +60,7 @@ describe('StorageService', () => {
     it('should prevent directory traversal attacks', async () => {
       const maliciousProjectId = '../malicious-dir';
       await expect(
-        service.saveBookText(maliciousProjectId, 'book.txt', 'hack'),
+        service.saveBookText(maliciousProjectId, 'hack'),
       ).rejects.toThrow('Invalid project ID or path traversal detected');
     });
   });
@@ -98,7 +94,7 @@ describe('StorageService', () => {
     it('should read stored book content correctly', async () => {
       const projectId = 'test-project-3';
       const content = 'Read this file please.';
-      await service.saveBookText(projectId, 'book.txt', content);
+      await service.saveBookText(projectId, content);
 
       const readContent = await service.readBookText(projectId);
       expect(readContent).toBe(content);
@@ -112,7 +108,7 @@ describe('StorageService', () => {
   describe('deleteProjectDir', () => {
     it('should remove project directory recursively', async () => {
       const projectId = 'test-project-4';
-      await service.saveBookText(projectId, 'book.txt', 'Delete me');
+      await service.saveBookText(projectId, 'Delete me');
 
       const projectDir = path.join(mockUploadsDir, 'projects', projectId);
       let dirExists = await fs

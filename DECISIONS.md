@@ -28,6 +28,12 @@ This document records the design decisions made for the Book Illustration Studio
 - **Where we landed**: Initialized a root-level `package.json` to manage development tools, installing `husky`, `lint-staged`, and `prettier` there. We then configured a root-level `.lintstagedrc.mjs` that maps changed files to their respective projects and uses `npx --prefix` to run linting within the project directories.
 - **Cost**: Introduces a root `node_modules` folder and root configuration files, but keeps the git hook configuration completely isolated and prevents lint-checking the entire repository during every commit.
 
+## 5. Gemini API: Interactions API and Image Generation Fallback (MOCK_IMAGES)
+- **Proposed by**: AI proposed migrating the pipeline to use the modern `interactions.create` API using `gemini-2.5-flash` and `imagen-3.0-generate-002` for image generation.
+- **Pushback**: The developer encountered deprecation errors (404/NOT_FOUND) from Google stating that `gemini-2.5-flash` is no longer available to new users and `imagen-3.0` is not supported on the standard v1beta Interactions API. I directed the AI to upgrade the system to use the latest `gemini-3.6-flash` for text chain interactions and `gemini-3.1-flash-image` (Nano Banana 2 family) for visual tasks. However, because Google restricts the visual models' Free Tier rate limit to strictly `0` requests, calling the real visual API returned a 429 quota exhaustion. The AI then suggested mocking everything. I pushed back, specifying that I only wanted image generation to be mocked when the env flag is set, while allowing the text-based steps (1, 2, 4) to continue making real Gemini API calls since text has a generous free tier.
+- **Where we landed**: Upgraded the text model to `gemini-3.6-flash` and image model to `gemini-3.1-flash-image` using standard `generateContent` typed objects. We then split the mock flags into two distinct behaviors: `MOCK_GEMINI` (full pipeline mock) and `MOCK_IMAGES` (mock only image generation). When `MOCK_IMAGES=true` is set, steps 1, 2, and 4 call the real Gemini API to analyze the uploaded book, while steps 3 and 5 generate mock 1x1 violet PNG images locally to bypass quota limits seamlessly.
+- **Cost**: Adds extra environment configurations and local asset generators, but allows developers to test real book analysis workflows for free without getting blocked by Google's image generation quota policies.
+
 ---
 
 ## If you had one more day, what would you build next and why?

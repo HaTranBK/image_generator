@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import {
   Body,
   Controller,
@@ -6,6 +7,7 @@ import {
   HttpStatus,
   Post,
   Res,
+  Req,
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -61,12 +63,13 @@ export class AuthController {
       path: '/',
     });
 
-    // Return user info but NOT the token (it's in the cookie)
+    // Return user info and the token (for WS auth query param)
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       createdAt: user.createdAt,
+      token,
     };
   }
 
@@ -86,13 +89,18 @@ export class AuthController {
    * Returns the current authenticated user.
    */
   @Get('me')
-  me(@CurrentUser() user: PrismaUser) {
+  me(@CurrentUser() user: PrismaUser, @Req() req: any) {
     if (!user) throw new UnauthorizedException();
+    // Extract token from request cookies (or authorization header fallback)
+    const token =
+      req.cookies?.[AUTH_COOKIE_NAME] ??
+      req.headers.authorization?.replace('Bearer ', '');
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       createdAt: user.createdAt,
+      token,
     };
   }
 }

@@ -4,6 +4,7 @@ import { ProjectsService } from './projects.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { BadRequestException } from '@nestjs/common';
 import type { User as PrismaUser } from '@prisma/client';
+import { Request } from 'express';
 
 describe('ProjectsController', () => {
   let controller: ProjectsController;
@@ -58,7 +59,11 @@ describe('ProjectsController', () => {
 
       mockProjectsService.createProject.mockResolvedValue(mockProject);
 
-      const result = await controller.create(mockUser, mockFile, dto);
+      const mockReq = {
+        headers: { 'content-type': 'multipart/form-data' },
+      } as unknown as Request;
+
+      const result = await controller.create(mockUser, mockFile, dto, mockReq);
 
       expect(result).toEqual(mockProject);
       expect(mockProjectsService.createProject).toHaveBeenCalledWith(
@@ -69,10 +74,50 @@ describe('ProjectsController', () => {
       );
     });
 
-    it('should throw BadRequestException if file is missing', async () => {
+    it('should throw BadRequestException if file is missing in multipart flow', async () => {
       const dto: CreateProjectDto = { title: 'New Book' };
-      await expect(controller.create(mockUser, undefined, dto)).rejects.toThrow(
+      const mockReq = {
+        headers: { 'content-type': 'multipart/form-data' },
+      } as unknown as Request;
+
+      await expect(
+        controller.create(mockUser, undefined, dto, mockReq),
+      ).rejects.toThrow(
         new BadRequestException('Book file (.txt) is required'),
+      );
+    });
+
+    it('should paste text and create a project via JSON body flow', async () => {
+      const dto: CreateProjectDto = {
+        title: 'New Book',
+        style: 'Watercolor',
+        bookText: 'Pasted text content',
+      };
+      const mockReq = {
+        headers: { 'content-type': 'application/json' },
+        body: { bookText: 'Pasted text content' },
+      } as unknown as Request;
+
+      const mockProject = {
+        id: 'proj-123',
+        userId: mockUser.id,
+        title: dto.title,
+        style: dto.style,
+        bookText: 'Pasted text content',
+        bookFilePath: 'uploads/projects/proj-123/book.txt',
+      };
+
+      mockProjectsService.createProject.mockResolvedValue(mockProject);
+
+      const result = await controller.create(mockUser, undefined, dto, mockReq);
+
+      expect(result).toEqual(mockProject);
+      expect(mockProjectsService.createProject).toHaveBeenCalledWith(
+        mockUser.id,
+        dto.title,
+        dto.style,
+        undefined,
+        'Pasted text content',
       );
     });
   });

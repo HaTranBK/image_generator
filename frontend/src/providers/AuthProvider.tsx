@@ -1,13 +1,8 @@
-'use client';
+"use client";
 
-import {
-  createContext,
-  useContext,
-  useCallback,
-  ReactNode,
-} from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { login, logout, getMe, AuthUser, LoginPayload } from '../lib/auth.api';
+import { createContext, useContext, useCallback, ReactNode } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { login, logout, getMe, AuthUser, LoginPayload } from "../lib/auth.api";
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -24,10 +19,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check current session on mount
   const { data: user = null, isLoading } = useQuery<AuthUser | null>({
-    queryKey: ['auth', 'me'],
+    queryKey: ["auth", "me"],
     queryFn: async () => {
       try {
-        return await getMe();
+        const data = await getMe();
+        if (data && data.token) {
+          localStorage.setItem("token", data.token);
+        }
+        return data;
       } catch {
         return null; // 401 = not authenticated, not an error
       }
@@ -39,13 +38,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginMutation = useMutation<AuthUser, Error, LoginPayload>({
     mutationFn: login,
     onSuccess: (data) => {
-      queryClient.setQueryData(['auth', 'me'], data);
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+      queryClient.setQueryData(["auth", "me"], data);
     },
   });
 
   const logoutFn = useCallback(async () => {
     await logout();
-    queryClient.setQueryData(['auth', 'me'], null);
+    localStorage.removeItem("token");
+    queryClient.setQueryData(["auth", "me"], null);
     queryClient.clear();
   }, [queryClient]);
 
@@ -67,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error('useAuth must be used within <AuthProvider>');
+    throw new Error("useAuth must be used within <AuthProvider>");
   }
   return ctx;
 }

@@ -144,3 +144,69 @@ To prevent testing from being a retrospective activity designed to pass already-
 - Phase 02: `extractImage()` cần implementation spec với defensive checks và dev-mode logging
 - Phase 04: JWT storage phải dùng `httpOnly cookie` thay vì `localStorage`
 - Phase 05: README section cần note Windows equivalent commands cho `start.sh`/`test.sh`
+
+---
+
+### Session 2 — 2026-08-14
+**Trigger:** User yêu cầu validate lại plan sau khi backend Phase 01 đã được implement, đồng thời consolidate requirements từ assessment doc và business brainstorm
+**Questions asked:** 7
+
+#### Questions & Answers
+
+1. **[Architecture]** Plan dùng `currentStep` (int) + `stepState` (idle/running/failed). Khi `currentStep=5` và `stepState=idle`, đây là trạng thái "Done" — nhưng project list cần hiển thị status pill "Done". Nên derive project status như thế nào?
+   - Options: Derive từ currentStep+stepState (currentStep=5 → 'Done', stepState='running' → 'In Progress', còn lại → 'Draft') | Thêm field `status` riêng vào Prisma schema | Chỉ trả về currentStep và stepState cho frontend, để frontend tự derive
+   - **Answer:** Derive từ `currentStep + stepState`: `currentStep=5 → 'Done'`, `stepState='running' → 'In Progress'`, còn lại → `'Draft'`
+   - **Rationale:** Không cần thêm field DB; single source of truth là `currentStep` + `stepState`. Tránh sync bug giữa 2 sources.
+
+2. **[Risk]** Phase 04 dùng `httpOnly cookie` cho JWT. Tuy nhiên, WS connect cần token qua query param vì browser WebSocket API không support custom headers. httpOnly cookie không accessible từ JS → WS không lấy được token từ cookie.
+   - Options: Dùng httpOnly cookie cho REST + issue short-lived WS token qua `/auth/ws-token` | Switch hoàn toàn về localStorage token | httpOnly cookie cho REST, WS auth qua handshake message đầu tiên
+   - **Answer:** Switch hoàn toàn về **localStorage** token — đơn giản hơn, WS query param hoạt động bình thường
+   - **Rationale:** httpOnly cookie + WS là conflict không nhỏ cho scope assessment. localStorage đơn giản, WS query param hoạt động bình thường. Document XSS tradeoff trong DECISIONS.md.
+
+3. **[Scope]** Assessment §2.2 yêu cầu commit AI artifacts vào repo: `CLAUDE.md`/`.cursor/rules`/`AGENTS.md`, `.claude/`, `docs/plan.md`, saved prompts. Plan hiện tại đã có plan files nhưng thiếu `CLAUDE.md`/`AGENTS.md`.
+   - Options: Thêm task vào Phase 05: tạo CLAUDE.md tóm tắt project context, copy plan dir vào docs/, commit .agents/ | Tạo ngay CLAUDE.md bây giờ | Bỏ qua — .agents/skills và plan/ files đã cover §2.2
+   - **Answer:** Thêm task vào Phase 05: tạo `CLAUDE.md` tóm tắt project context, copy plan dir vào `docs/`, commit `.agents/` folder là artifact đủ
+   - **Rationale:** Làm cuối Phase 05 khi mọi thứ đã ổn định. CLAUDE.md nên phản ánh final state, không phải draft state.
+
+4. **[Architecture]** Phase 02 dùng `in-memory lock` (`Map<projectId, Promise>`) để prevent duplicate calls. NestJS có thể spawn multiple worker processes. In-memory lock sẽ fail cross-process.
+   - Options: Không cần lo — single-process local dev là đủ. Document limitation trong DECISIONS.md | Thêm DB-level advisory lock (PostgreSQL `pg_try_advisory_lock`) | Dùng Redis lock (BullMQ)
+   - **Answer:** Không cần lo — **single-process local dev là đủ**. Document limitation trong DECISIONS.md
+   - **Rationale:** Assessment scope là local dev, không có PM2/cluster. DB `stepState` check là second guard. Document trong DECISIONS.md như accepted limitation.
+
+5. **[Architecture]** `POST /projects` cần nhận cả JSON body (paste text) lẫn multipart (file upload) trong cùng một endpoint.
+   - Options: Multer (multipart) cho file upload + JSON body cho paste: backend detect via `content-type` | Tách 2 endpoints | Chỉ hỗ trợ paste text, client extract text rồi gửi
+   - **Answer:** **Multer** cho multipart file upload + JSON body cho paste text: `POST /projects` nhận cả 2, backend detect via `content-type`
+   - **Rationale:** Single endpoint, clean API. Multer chỉ apply khi `content-type: multipart/form-data`. Khi JSON body, Multer middleware bỏ qua.
+
+6. **[Architecture]** Phase 04 dùng `staleTime: Infinity` cho TanStack Query (WS invalidates). Khi user navigate vào Project Detail khi step đang `running`, WS connect một lúc sau — liệu initial query state có cần refetch ngay không, hay đợi WS `state:sync`?
+   - Options: Hồi sực bằng query (`GET /projects/:id`) on mount, sau đó WS event cập nhật dần vào cache | Sau WS `step:done` → `invalidateQuery` để refetch toàn bộ project | WS `state:sync` được gửi trước, frontend chỉ dùng WS state
+   - **Answer:** **Hồi sực bằng query** (`GET /projects/:id`) on mount, sau đó WS event cập nhật dần vào cache
+   - **Rationale:** HTTP query on mount đảm bảo luôn có initial state ngay cả trước khi WS connect. WS events sau đó patch cache dần. Không có race condition.
+
+7. **[Architecture]** Với việc derive project status từ currentStep+stepState, cần quyết định: derive logic xảy ra ở backend (gửi `status` trong DTO) hay frontend (utility function)?
+   - Options: Transform trong API response: backend service map `currentStep` + `stepState` → `status` string trước khi return DTO | Frontend utility function: `deriveStatus(currentStep, stepState)` | Cả hai
+   - **Answer:** **Transform trong API response** — backend service map `currentStep` + `stepState` → `status` string trước khi return DTO
+   - **Rationale:** Single source of truth ở backend. Frontend không cần biết mapping logic. DTO sạch và self-documenting.
+
+#### Confirmed Decisions
+
+- **Project status**: Derive từ `currentStep + stepState` tại backend, gửi `status` string trong DTO — không thêm DB field
+- **JWT storage**: Switch sang **localStorage** — đơn giản hơn cho WS auth, document XSS tradeoff trong DECISIONS.md
+- **CLAUDE.md**: Tạo trong Phase 05 khi implementation xong, commit `.agents/` và `plan/` dirs là AI artifacts
+- **In-memory lock**: Acceptable cho single-process local dev; document cross-process limitation trong DECISIONS.md
+- **File upload API**: Multer multipart + JSON body trong cùng `POST /projects`, detect via `content-type`
+- **TanStack Query init**: HTTP query on mount + WS patch vào cache (không dùng `staleTime: Infinity` blindly)
+- **Status derive**: Xảy ra ở backend DTO layer, không ở frontend
+
+#### Action Items
+- [ ] Phase 04: Revert httpOnly cookie → localStorage, update Key Insights và Security Considerations
+- [ ] Phase 04: Update TanStack Query strategy: `staleTime` hợp lý (không phải Infinity), refetch on mount
+- [ ] Phase 03: Add Multer setup note cho `POST /projects` — detect content-type, handle both JSON + multipart
+- [ ] Phase 03: Add `status` field vào `ProjectSummaryDto` (derived from currentStep+stepState in service layer)
+- [ ] Phase 05: Add task: tạo `CLAUDE.md` và commit `.agents/`/`plan/` dirs as AI artifacts
+- [ ] Phase 05 (DECISIONS.md): Document JWT localStorage tradeoff, in-memory lock cross-process limitation
+
+#### Impact on Phases
+- **Phase 04**: JWT phải dùng `localStorage` (không phải httpOnly cookie); TanStack Query `staleTime` không phải Infinity — refetch on mount, WS patches cache
+- **Phase 03**: `POST /projects` xử lý cả JSON + multipart via content-type detection; `ProjectSummaryDto` phải include `status: 'Draft' | 'In Progress' | 'Done'` derived từ backend
+- **Phase 05**: Thêm task tạo `CLAUDE.md` + commit AI artifacts; DECISIONS.md cần 2 entries mới (JWT localStorage + in-memory lock limitation)

@@ -1,14 +1,13 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { UPLOADS_DIR } from '../common/constants';
 
 @Injectable()
 export class StorageService {
-  private uploadsDir = path.resolve(__dirname, '..', '..', 'uploads');
+  private uploadsDir = path.resolve(process.cwd(), UPLOADS_DIR);
 
-  /**
-   * Helper to resolve and validate that the target directory/file is inside uploadsDir
-   */
+  /** Helper to resolve and validate that the target path is inside uploadsDir */
   private securePath(...parts: string[]): string {
     const resolvedPath = path.resolve(this.uploadsDir, ...parts);
     if (!resolvedPath.startsWith(this.uploadsDir)) {
@@ -19,9 +18,7 @@ export class StorageService {
     return resolvedPath;
   }
 
-  /**
-   * Validates project ID format to ensure it cannot contain traversal elements
-   */
+  /** Validates project ID format to ensure no traversal elements */
   private validateProjectId(projectId: string): void {
     if (
       !projectId ||
@@ -37,27 +34,8 @@ export class StorageService {
   }
 
   /**
-   * Saves text content to disk and returns the relative path
-   */
-  async saveBookText(
-    projectId: string,
-    fileName: string,
-    content: string,
-  ): Promise<string> {
-    this.validateProjectId(projectId);
-    const projectDir = this.securePath('projects', projectId);
-    const targetFile = this.securePath('projects', projectId, fileName);
-
-    await fs.mkdir(projectDir, { recursive: true });
-    await fs.writeFile(targetFile, content, 'utf-8');
-
-    // Return path relative to the backend root directory (using path.relative from backend root)
-    const backendRoot = path.resolve(__dirname, '..', '..');
-    return path.relative(backendRoot, targetFile);
-  }
-
-  /**
-   * Writes a Multer buffer to the project folder
+   * Saves a Multer file buffer to disk as book.txt
+   * Returns relative path from project root
    */
   async saveBookFile(
     projectId: string,
@@ -70,8 +48,22 @@ export class StorageService {
     await fs.mkdir(projectDir, { recursive: true });
     await fs.writeFile(targetFile, file.buffer);
 
-    const backendRoot = path.resolve(__dirname, '..', '..');
-    return path.relative(backendRoot, targetFile);
+    return path.join(UPLOADS_DIR, 'projects', projectId, 'book.txt');
+  }
+
+  /**
+   * Saves raw text content to disk as book.txt (for paste-text flow)
+   * Returns relative path from project root
+   */
+  async saveBookText(projectId: string, content: string): Promise<string> {
+    this.validateProjectId(projectId);
+    const projectDir = this.securePath('projects', projectId);
+    const targetFile = this.securePath('projects', projectId, 'book.txt');
+
+    await fs.mkdir(projectDir, { recursive: true });
+    await fs.writeFile(targetFile, content, 'utf-8');
+
+    return path.join(UPLOADS_DIR, 'projects', projectId, 'book.txt');
   }
 
   /**
@@ -84,7 +76,54 @@ export class StorageService {
   }
 
   /**
-   * Deletes the directory recursively in case of failure/rollback
+   * Saves a base64-encoded image (from Gemini API) to disk.
+   * type: 'portraits' | 'illustrations'
+   * Returns relative path from project root
+   */
+  async saveImage(
+    projectId: string,
+    type: 'portraits' | 'illustrations',
+    filename: string,
+    base64Data: string,
+  ): Promise<string> {
+    this.validateProjectId(projectId);
+    const dir = this.securePath('projects', projectId, type);
+    const targetFile = this.securePath('projects', projectId, type, filename);
+
+    await fs.mkdir(dir, { recursive: true });
+    const buffer = Buffer.from(base64Data, 'base64');
+    await fs.writeFile(targetFile, buffer);
+
+    return path.join(UPLOADS_DIR, 'projects', projectId, type, filename);
+  }
+
+  /**
+   * Reads an image file and returns its buffer (for streaming endpoint)
+   */
+  async readImage(
+    projectId: string,
+    type: 'portraits' | 'illustrations',
+    filename: string,
+  ): Promise<Buffer> {
+    this.validateProjectId(projectId);
+    const targetFile = this.securePath('projects', projectId, type, filename);
+    return fs.readFile(targetFile);
+  }
+
+  /**
+   * Returns the absolute path to an image file (for stream piping)
+   */
+  getImageAbsPath(
+    projectId: string,
+    type: 'portraits' | 'illustrations',
+    filename: string,
+  ): string {
+    this.validateProjectId(projectId);
+    return this.securePath('projects', projectId, type, filename);
+  }
+
+  /**
+   * Deletes the project directory recursively (cleanup on failure/rollback)
    */
   async deleteProjectDir(projectId: string): Promise<void> {
     this.validateProjectId(projectId);

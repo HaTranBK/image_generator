@@ -23,11 +23,11 @@ The `app-demo.html` from the assessment is the **floor** — match or exceed it 
 - **Per-item reveal**: When `item:done` event arrives → update only that card (portrait/illustration) immediately.
 - **No localStorage state machine** — all state from backend via API/WS. Never port the demo's fake localStorage.
 - **Fake timings in demo are wrong** — real Gemini calls are 10–30s+ for images. Don't copy `~2s step` timings.
-- **TanStack Query cache invalidation**: After WS `step:done` → invalidate `['project', id]` query so sidebar/header reflect new state.
+- **TanStack Query init**: `GET /projects/:id` on mount for initial state, then WS events patch the cache. Do NOT set `staleTime: Infinity` — always refetch on mount so the page is correct even before WS connects.
 - **Stuck recovery button**: Show "Force Retry" after 60s of `step:running` state in UI.
 - **Error state**: Show error message + "Retry this step" button. No full page error.
-- **Session token**: Store JWT in `httpOnly cookie` (more secure, prevents XSS). NestJS sets `res.cookie('token', jwt, { httpOnly: true, sameSite: 'strict' })`. Axios must use `withCredentials: true`.
-<!-- Updated: Validation Session 1 - switch JWT storage from localStorage to httpOnly cookie -->
+- **Session token**: Store JWT in **`localStorage`** — required for WS auth (query param `?token=...`). Browser WebSocket API does not support custom headers, making httpOnly cookie incompatible with WS. Accept XSS tradeoff and document it in DECISIONS.md.
+<!-- Updated: Validation Session 2 - switch JWT storage from httpOnly cookie back to localStorage; WS query param incompatibility with httpOnly cookie -->
 
 ---
 
@@ -119,8 +119,8 @@ frontend/src/components/
 const { data: project } = useQuery({
   queryKey: ['project', id],
   queryFn: () => api.get(`/projects/${id}`),
-  refetchInterval: false,  // WS handles live updates
-  staleTime: Infinity,     // don't auto-refetch; WS invalidates
+  refetchOnMount: true,   // always get latest state when page loads
+  staleTime: 30_000,      // treat data as fresh for 30s, WS patches live
 })
 
 // 2. Real-time (WebSocket) → manually update query cache
@@ -273,8 +273,8 @@ export const useCreateProject = () => useMutation({ mutationFn: api.createProjec
 
 ## Security Considerations
 
-- JWT stored in `httpOnly cookie` — not accessible via JS, mitigates XSS. NestJS sets cookie on login response, frontend uses `withCredentials: true` in Axios. Tradeoff: requires CORS `credentials: true` config.
-<!-- Updated: Validation Session 1 - httpOnly cookie confirmed, localStorage dropped -->
+- JWT stored in **`localStorage`** — required for WS auth via query param. Tradeoff: accessible to JS (XSS risk); mitigated by scoping token to short TTL and not storing sensitive data in token payload. Document in DECISIONS.md.
+<!-- Updated: Validation Session 2 - reverted to localStorage; httpOnly cookie is incompatible with browser WebSocket API (no custom header support) -->
 - All API calls include `Authorization: Bearer {token}` header (Axios interceptor)
 - Never display raw error messages from Gemini API — catch and normalize
 - Images served from authenticated backend endpoint (not public folder)

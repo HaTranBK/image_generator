@@ -37,11 +37,17 @@ POST /auth/login
 ### Projects
 ```
 GET  /projects
-  → ProjectSummary[]   { id, title, status, currentStep, createdAt }
+  → ProjectSummary[]   { id, title, status, currentStep, stepState, createdAt }
+  Note: `status` is derived server-side from currentStep+stepState:
+        currentStep=5 → 'Done' | stepState='running' → 'In Progress' | else → 'Draft'
 
 POST /projects
-  body: { title: string, bookText: string }   (or multipart for .txt upload)
+  body: { title: string, bookText: string }   (JSON — paste text flow)
+     OR multipart/form-data: { title: string, bookFile: .txt }  (file upload flow)
+  backend detects via content-type: application/json vs multipart/form-data
+  Multer middleware only applied when content-type is multipart
   → Project
+<!-- Updated: Validation Session 2 - POST /projects handles both JSON and multipart, Multer detect via content-type; status derived at backend -->
 
 GET  /projects/:id
   → Project (full — including characters, chapters, portraits, illustrations)

@@ -252,12 +252,18 @@ Before submitting, run this full walkthrough manually:
 - [ ] Run backend tests and confirm 100% pass rate
 - [ ] Run frontend tests and confirm 100% pass rate
 - [ ] Document final decisions and AI overrides in `DECISIONS.md`
+  - New entries: JWT localStorage tradeoff (vs httpOnly cookie, WS incompatibility)
+  - New entries: In-memory lock scope (single-process local dev, cross-process limitation accepted)
 - [ ] Write the TDD testing report in `TESTING.md` with raw test output
 - [ ] Create `start.sh` and `test.sh` scripts
 - [ ] Create `start.ps1` and `test.ps1` scripts for Windows users
+- [ ] **[AI Artifacts]** Create `CLAUDE.md` summarizing project architecture, stack decisions, and how to run — per assessment §2.2
+- [ ] **[AI Artifacts]** Ensure `.agents/` dir is committed (skills, workflows, brainstorm docs)
+- [ ] **[AI Artifacts]** Copy `plan/book-illustration-pipeline/` into `docs/` for discoverability
 - [ ] Complete the 12-step manual E2E walkthrough
 - [ ] Verify `.env.example` completeness
 - [ ] Review git log for clean commits and no leaked keys
+<!-- Updated: Validation Session 2 - added AI artifacts tasks (CLAUDE.md, .agents/, docs/plan/) -->
 
 ---
 

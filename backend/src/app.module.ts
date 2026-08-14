@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -7,13 +8,23 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/auth.guard';
 import { ProjectsModule } from './projects/projects.module';
+import { GeminiModule } from './gemini/gemini.module';
+import { PipelineModule } from './pipeline/pipeline.module';
+import { GatewayModule } from './gateway/gateway.module';
+import { ImagesModule } from './images/images.module';
 
 @Module({
   imports: [
-    PrismaModule, // global — PrismaService available everywhere
+    // Global event emitter (used by PipelineService → WsGateway)
+    EventEmitterModule.forRoot(),
+    PrismaModule,
     UsersModule,
     AuthModule,
     ProjectsModule,
+    GeminiModule,
+    PipelineModule,
+    GatewayModule,
+    ImagesModule,
   ],
   controllers: [AppController],
   providers: [
