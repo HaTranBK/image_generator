@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "start": "bash ./start.sh",
+    "test": "bash ./test.sh"
   },
   "devDependencies": {
     "husky": "^9.1.7",
