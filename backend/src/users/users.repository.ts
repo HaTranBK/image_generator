@@ -1,28 +1,42 @@
 import { Injectable } from '@nestjs/common';
+import { ResultAsync } from 'neverthrow';
 import { PrismaService } from '../prisma/prisma.service';
 import type { User as PrismaUser } from '@prisma/client';
 
+/**
+ * Data-access layer for User entities.
+ * All methods return neverthrow `ResultAsync<T, Error>` for typed error handling.
+ */
 @Injectable()
 export class UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByEmail(email: string): Promise<PrismaUser | null> {
-    return this.prisma.user.findUnique({ where: { email } });
+  findByEmail(email: string): ResultAsync<PrismaUser | null, Error> {
+    return ResultAsync.fromPromise(
+      this.prisma.user.findUnique({ where: { email } }),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
   }
 
-  async findById(id: string): Promise<PrismaUser | null> {
-    return this.prisma.user.findUnique({ where: { id } });
+  findById(id: string): ResultAsync<PrismaUser | null, Error> {
+    return ResultAsync.fromPromise(
+      this.prisma.user.findUnique({ where: { id } }),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
   }
 
   /**
    * Upsert by email — create if not exists, update name if exists.
    * No password — identity is email + name only (per spec).
    */
-  async findOrCreate(email: string, name: string): Promise<PrismaUser> {
-    return this.prisma.user.upsert({
-      where: { email },
-      update: { name },
-      create: { email, name },
-    });
+  findOrCreate(email: string, name: string): ResultAsync<PrismaUser, Error> {
+    return ResultAsync.fromPromise(
+      this.prisma.user.upsert({
+        where: { email },
+        update: { name },
+        create: { email, name },
+      }),
+      (e) => (e instanceof Error ? e : new Error(String(e))),
+    );
   }
 }

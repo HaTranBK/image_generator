@@ -1,4 +1,11 @@
 // Shared frontend types matching backend models
+
+/** Standard API response envelope from backend */
+export interface BaseResponse<T> {
+  code: number;
+  message: string;
+  payload: T;
+}
 export interface Character {
   id: string;
   name: string;

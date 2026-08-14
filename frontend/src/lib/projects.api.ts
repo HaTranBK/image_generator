@@ -1,5 +1,11 @@
 import apiClient from "./apiClient";
-import { Character, Chapter, Portrait, Illustration } from "./types";
+import {
+  BaseResponse,
+  Character,
+  Chapter,
+  Portrait,
+  Illustration,
+} from "./types";
 
 export type ProjectStatus = "Draft" | "In Progress" | "Done";
 
@@ -33,26 +39,26 @@ export async function createProject(
   data: FormData | { title: string; style?: string; bookText: string },
 ): Promise<Project> {
   if (data instanceof FormData) {
-    const res = await apiClient.post<Project>("/projects", data, {
+    const res = await apiClient.post<BaseResponse<Project>>("/projects", data, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    return res.data;
+    return res.data.payload;
   } else {
-    const res = await apiClient.post<Project>("/projects", data);
-    return res.data;
+    const res = await apiClient.post<BaseResponse<Project>>("/projects", data);
+    return res.data.payload;
   }
 }
 
 /** GET /projects — project list */
 export async function getProjects(): Promise<Project[]> {
-  const res = await apiClient.get<Project[]>("/projects");
-  return res.data;
+  const res = await apiClient.get<BaseResponse<Project[]>>("/projects");
+  return res.data.payload;
 }
 
 /** GET /projects/:id — full project detail */
 export async function getProject(id: string): Promise<Project> {
-  const res = await apiClient.get<Project>(`/projects/${id}`);
-  return res.data;
+  const res = await apiClient.get<BaseResponse<Project>>(`/projects/${id}`);
+  return res.data.payload;
 }
 
 /** POST /projects/:id/steps/run — trigger next step (202) */

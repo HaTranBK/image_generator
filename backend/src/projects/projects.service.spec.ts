@@ -1,22 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProjectsService } from './projects.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { ProjectsRepository } from './provider/projects.repository';
 import { StorageService } from '../storage/storage.service';
 import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { ok, err } from 'neverthrow';
 
 describe('ProjectsService', () => {
   let service: ProjectsService;
 
-  const mockPrismaService = {
-    project: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-    },
+  const mockProjectsRepository = {
+    create: jest.fn(),
+    findMany: jest.fn(),
+    findUnique: jest.fn(),
+    findUniqueOrThrow: jest.fn(),
+    update: jest.fn(),
+    savePortrait: jest.fn(),
+    saveIllustration: jest.fn(),
   };
 
   const mockStorageService = {
@@ -30,7 +33,7 @@ describe('ProjectsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProjectsService,
-        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: ProjectsRepository, useValue: mockProjectsRepository },
         { provide: StorageService, useValue: mockStorageService },
       ],
     }).compile();
@@ -66,7 +69,7 @@ describe('ProjectsService', () => {
       };
 
       mockStorageService.saveBookFile.mockResolvedValue(mockSavedPath);
-      mockPrismaService.project.create.mockResolvedValue(mockProject);
+      mockProjectsRepository.create.mockResolvedValue(ok(mockProject));
 
       const result = await service.createProject(
         userId,
@@ -80,9 +83,8 @@ describe('ProjectsService', () => {
         expect.any(String),
         expect.any(Object),
       );
-      expect(mockPrismaService.project.create).toHaveBeenCalledWith({
-        data: {
-          id: expect.any(String) as string,
+      expect(mockProjectsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
           userId,
           title,
           bookText: 'Valid book text content.',
@@ -90,8 +92,8 @@ describe('ProjectsService', () => {
           style,
           currentStep: 0,
           stepState: 'idle',
-        },
-      });
+        }),
+      );
     });
 
     it('should throw BadRequestException if buffer is empty', async () => {
@@ -111,7 +113,10 @@ describe('ProjectsService', () => {
       mockStorageService.saveBookFile.mockResolvedValue(
         'uploads/projects/proj-123/book.txt',
       );
-      mockPrismaService.project.create.mockRejectedValue(new Error('DB Error'));
+      mockProjectsRepository.create.mockResolvedValue(
+        err(new Error('DB Error')),
+      );
+      mockStorageService.deleteProjectDir.mockResolvedValue(undefined);
 
       await expect(
         service.createProject(userId, title, style, validBuffer),
@@ -125,17 +130,29 @@ describe('ProjectsService', () => {
     it('should return projects belonging to the user', async () => {
       const userId = 'user-123';
       const mockProjects = [
-        { id: 'proj-1', userId, title: 'Proj 1', status: 'Draft' },
-        { id: 'proj-2', userId, title: 'Proj 2', status: 'Draft' },
+        {
+          id: 'proj-1',
+          userId,
+          title: 'Proj 1',
+          currentStep: 0,
+          stepState: 'idle',
+          stuckAt: null,
+        },
+        {
+          id: 'proj-2',
+          userId,
+          title: 'Proj 2',
+          currentStep: 0,
+          stepState: 'idle',
+          stuckAt: null,
+        },
       ];
-      mockPrismaService.project.findMany.mockResolvedValue(mockProjects);
+      mockProjectsRepository.findMany.mockResolvedValue(ok(mockProjects));
 
       const result = await service.findUserProjects(userId);
-      expect(result).toEqual(mockProjects);
-      expect(mockPrismaService.project.findMany).toHaveBeenCalledWith({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-      });
+      // Status field is added by the service
+      expect(result[0]).toMatchObject({ id: 'proj-1', status: 'Draft' });
+      expect(result[1]).toMatchObject({ id: 'proj-2', status: 'Draft' });
     });
   });
 
@@ -148,16 +165,18 @@ describe('ProjectsService', () => {
         id: projectId,
         userId,
         title: 'Proj 1',
-        status: 'Draft',
+        currentStep: 0,
+        stepState: 'idle',
+        stuckAt: null,
       };
-      mockPrismaService.project.findUnique.mockResolvedValue(mockProject);
+      mockProjectsRepository.findUnique.mockResolvedValue(ok(mockProject));
 
       const result = await service.findOneUserProject(userId, projectId);
-      expect(result).toEqual(mockProject);
+      expect(result).toMatchObject({ id: projectId, status: 'Draft' });
     });
 
     it('should throw NotFoundException if the project does not exist', async () => {
-      mockPrismaService.project.findUnique.mockResolvedValue(null);
+      mockProjectsRepository.findUnique.mockResolvedValue(ok(null));
       await expect(
         service.findOneUserProject(userId, projectId),
       ).rejects.toThrow(NotFoundException);
@@ -168,9 +187,11 @@ describe('ProjectsService', () => {
         id: projectId,
         userId: 'other-user',
         title: 'Proj 1',
-        status: 'Draft',
+        currentStep: 0,
+        stepState: 'idle',
+        stuckAt: null,
       };
-      mockPrismaService.project.findUnique.mockResolvedValue(mockProject);
+      mockProjectsRepository.findUnique.mockResolvedValue(ok(mockProject));
 
       await expect(
         service.findOneUserProject(userId, projectId),

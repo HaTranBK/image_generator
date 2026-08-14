@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -12,6 +12,8 @@ import { GeminiModule } from './gemini/gemini.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { ImagesModule } from './images/images.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { DecimalSerializerInterceptor } from './common/interceptors/decimal-serializer.interceptor';
 
 @Module({
   imports: [
@@ -33,6 +35,16 @@ import { ImagesModule } from './images/images.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    // Global HTTP exception filter → standardized { code, message, errors } envelope
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
+    // Global interceptor → serialize Prisma Decimal and Date types
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: DecimalSerializerInterceptor,
     },
   ],
 })

@@ -40,7 +40,7 @@ describe('ProjectsController', () => {
   });
 
   describe('create', () => {
-    it('should upload a file and create a project', async () => {
+    it('should upload a file and create a project, returning success envelope', async () => {
       const dto: CreateProjectDto = { title: 'New Book', style: 'Watercolor' };
       const mockFile = {
         buffer: Buffer.from('test book content'),
@@ -65,7 +65,11 @@ describe('ProjectsController', () => {
 
       const result = await controller.create(mockUser, mockFile, dto, mockReq);
 
-      expect(result).toEqual(mockProject);
+      expect(result).toEqual({
+        code: 200,
+        message: 'Success',
+        payload: mockProject,
+      });
       expect(mockProjectsService.createProject).toHaveBeenCalledWith(
         mockUser.id,
         dto.title,
@@ -111,7 +115,11 @@ describe('ProjectsController', () => {
 
       const result = await controller.create(mockUser, undefined, dto, mockReq);
 
-      expect(result).toEqual(mockProject);
+      expect(result).toEqual({
+        code: 200,
+        message: 'Success',
+        payload: mockProject,
+      });
       expect(mockProjectsService.createProject).toHaveBeenCalledWith(
         mockUser.id,
         dto.title,
@@ -123,7 +131,7 @@ describe('ProjectsController', () => {
   });
 
   describe('findAll', () => {
-    it('should return all projects of the logged-in user', async () => {
+    it('should return all projects of the logged-in user wrapped in success envelope', async () => {
       const mockProjects = [
         { id: '1', title: 'Proj 1', userId: mockUser.id },
         { id: '2', title: 'Proj 2', userId: mockUser.id },
@@ -131,7 +139,11 @@ describe('ProjectsController', () => {
       mockProjectsService.findUserProjects.mockResolvedValue(mockProjects);
 
       const result = await controller.findAll(mockUser);
-      expect(result).toEqual(mockProjects);
+      expect(result).toEqual({
+        code: 200,
+        message: 'Success',
+        payload: mockProjects,
+      });
       expect(mockProjectsService.findUserProjects).toHaveBeenCalledWith(
         mockUser.id,
       );
@@ -139,7 +151,7 @@ describe('ProjectsController', () => {
   });
 
   describe('findOne', () => {
-    it('should return project details if it exists and belongs to the user', async () => {
+    it('should return project details wrapped in success envelope', async () => {
       const mockProject = {
         id: 'proj-123',
         title: 'Proj 1',
@@ -148,7 +160,11 @@ describe('ProjectsController', () => {
       mockProjectsService.findOneUserProject.mockResolvedValue(mockProject);
 
       const result = await controller.findOne(mockUser, 'proj-123');
-      expect(result).toEqual(mockProject);
+      expect(result).toEqual({
+        code: 200,
+        message: 'Success',
+        payload: mockProject,
+      });
       expect(mockProjectsService.findOneUserProject).toHaveBeenCalledWith(
         mockUser.id,
         'proj-123',

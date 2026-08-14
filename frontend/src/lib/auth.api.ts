@@ -1,4 +1,5 @@
 import apiClient from "../lib/apiClient";
+import { BaseResponse } from "./types";
 
 export interface AuthUser {
   id: string;
@@ -17,8 +18,11 @@ export interface LoginPayload {
  * POST /auth/login — upserts user by email, sets httpOnly cookie, returns user info.
  */
 export async function login(payload: LoginPayload): Promise<AuthUser> {
-  const res = await apiClient.post<AuthUser>("/auth/login", payload);
-  return res.data;
+  const res = await apiClient.post<BaseResponse<AuthUser>>(
+    "/auth/login",
+    payload,
+  );
+  return res.data.payload;
 }
 
 /**
@@ -32,6 +36,6 @@ export async function logout(): Promise<void> {
  * GET /auth/me — returns the current authenticated user or throws 401.
  */
 export async function getMe(): Promise<AuthUser> {
-  const res = await apiClient.get<AuthUser>("/auth/me");
-  return res.data;
+  const res = await apiClient.get<BaseResponse<AuthUser>>("/auth/me");
+  return res.data.payload;
 }

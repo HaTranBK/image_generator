@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
@@ -34,9 +35,20 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
 
+  // Swagger / OpenAPI documentation
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Image Generator API')
+    .setDescription('REST API for the Book Illustration Pipeline application')
+    .setVersion('1.0')
+    .addCookieAuth('auth_token')
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api-docs', app, document);
+
   const port = process.env.PORT ?? 3001;
   await app.listen(port);
   logger.log(`Server running on http://localhost:${port}`);
+  logger.log(`Swagger docs at http://localhost:${port}/api-docs`);
 }
 
 bootstrap().catch((err) => {

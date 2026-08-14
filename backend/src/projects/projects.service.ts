@@ -1,13 +1,14 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   BadRequestException,
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
+import { ProjectsRepository } from './provider/projects.repository';
 import { randomUUID } from 'crypto';
 import type { Project } from '@prisma/client';
 import { Character, Chapter, Portrait, Illustration } from '../common/types';
@@ -38,7 +39,7 @@ export function isProjectStuck(project: Project): boolean {
 @Injectable()
 export class ProjectsService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly projectsRepository: ProjectsRepository,
     private readonly storageService: StorageService,
   ) {}
 
@@ -94,20 +95,23 @@ export class ProjectsService {
         savedFilePath = await this.storageService.saveBookText(projectId, text);
       }
 
-      const project = await this.prisma.project.create({
-        data: {
-          id: projectId,
-          userId,
-          title,
-          bookText: text,
-          bookFilePath: savedFilePath,
-          style: style || null,
-          currentStep: 0,
-          stepState: 'idle',
-        },
+      const result = await this.projectsRepository.create({
+        id: projectId,
+        userId,
+        title,
+        bookText: text,
+        bookFilePath: savedFilePath,
+        style: style || null,
+        currentStep: 0,
+        stepState: 'idle',
       });
 
-      return project;
+      if (result.isErr()) {
+        await this.storageService.deleteProjectDir(projectId).catch(() => {});
+        throw new InternalServerErrorException(result.error.message);
+      }
+
+      return result.value;
     } catch (error) {
       try {
         await this.storageService.deleteProjectDir(projectId);
@@ -125,11 +129,11 @@ export class ProjectsService {
   async findUserProjects(
     userId: string,
   ): Promise<(Project & { status: string })[]> {
-    const projects = await this.prisma.project.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+    const result = await this.projectsRepository.findMany(userId);
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
 
+    const projects = result.value;
     const results = await Promise.all(
       projects.map(async (p) => {
         const project = await this.autoFailIfStuck(p);
@@ -150,14 +154,12 @@ export class ProjectsService {
     userId: string,
     projectId: string,
   ): Promise<Project & { status: string }> {
-    const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
-    });
+    const result = await this.projectsRepository.findUnique(projectId);
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
 
-    if (!project) {
-      throw new NotFoundException('Project not found');
-    }
-
+    const project = result.value;
+    if (!project) throw new NotFoundException('Project not found');
     if (project.userId !== userId) {
       throw new ForbiddenException(
         'You do not have permission to access this project',
@@ -177,15 +179,14 @@ export class ProjectsService {
   /** Internal: if project is stuck, mark as failed and return updated */
   private async autoFailIfStuck(project: Project): Promise<Project> {
     if (isProjectStuck(project)) {
-      return this.prisma.project.update({
-        where: { id: project.id },
-        data: {
-          stepState: 'failed',
-          stuckAt: null,
-          errorMessage:
-            'Step was stuck in running state and has been auto-failed. Please retry.',
-        },
+      const result = await this.projectsRepository.update(project.id, {
+        stepState: 'failed',
+        stuckAt: null,
+        errorMessage:
+          'Step was stuck in running state and has been auto-failed. Please retry.',
       });
+      if (result.isErr()) return project; // best-effort, return original if update fails
+      return result.value;
     }
     return project;
   }
@@ -194,30 +195,32 @@ export class ProjectsService {
 
   /** Mark the current step as running; record stuckAt timestamp */
   async setStepRunning(projectId: string): Promise<Project> {
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: {
-        stepState: 'running',
-        stuckAt: new Date(),
-        errorMessage: null,
-      },
+    const result = await this.projectsRepository.update(projectId, {
+      stepState: 'running',
+      stuckAt: new Date(),
+      errorMessage: null,
     });
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
+    return result.value;
   }
 
   /** Advance to next step on success; clear stuckAt */
   async advanceStep(projectId: string): Promise<Project> {
-    const project = await this.prisma.project.findUniqueOrThrow({
-      where: { id: projectId },
+    const findResult =
+      await this.projectsRepository.findUniqueOrThrow(projectId);
+    if (findResult.isErr())
+      throw new InternalServerErrorException(findResult.error.message);
+
+    const result = await this.projectsRepository.update(projectId, {
+      currentStep: findResult.value.currentStep + 1,
+      stepState: 'idle',
+      stuckAt: null,
+      errorMessage: null,
     });
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: {
-        currentStep: project.currentStep + 1,
-        stepState: 'idle',
-        stuckAt: null,
-        errorMessage: null,
-      },
-    });
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
+    return result.value;
   }
 
   /** Mark current step as failed with error message */
@@ -225,21 +228,23 @@ export class ProjectsService {
     projectId: string,
     errorMessage: string,
   ): Promise<Project> {
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: {
-        stepState: 'failed',
-        stuckAt: null,
-        errorMessage,
-      },
+    const result = await this.projectsRepository.update(projectId, {
+      stepState: 'failed',
+      stuckAt: null,
+      errorMessage,
     });
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
+    return result.value;
   }
 
   /** Reset stuck step back to idle so user can retry */
   async resetStuckStep(projectId: string, userId: string): Promise<Project> {
-    const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
-    });
+    const findResult = await this.projectsRepository.findUnique(projectId);
+    if (findResult.isErr())
+      throw new InternalServerErrorException(findResult.error.message);
+
+    const project = findResult.value;
     if (!project) throw new NotFoundException('Project not found');
     if (project.userId !== userId)
       throw new ForbiddenException('Access denied');
@@ -248,10 +253,15 @@ export class ProjectsService {
         'Step is not stuck or failed — cannot reset',
       );
     }
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: { stepState: 'idle', stuckAt: null, errorMessage: null },
+
+    const result = await this.projectsRepository.update(projectId, {
+      stepState: 'idle',
+      stuckAt: null,
+      errorMessage: null,
     });
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
+    return result.value;
   }
 
   // ─── Result Persistence Methods ───────────────────────────────────────────
@@ -261,10 +271,13 @@ export class ProjectsService {
     bookFileUri: string,
     bookInteractionId: string,
   ): Promise<Project> {
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: { bookFileUri, bookInteractionId },
+    const result = await this.projectsRepository.update(projectId, {
+      bookFileUri,
+      bookInteractionId,
     });
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
+    return result.value;
   }
 
   async saveStyleResult(
@@ -272,10 +285,13 @@ export class ProjectsService {
     style: string,
     styleInteractionId: string,
   ): Promise<Project> {
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: { style, styleInteractionId },
+    const result = await this.projectsRepository.update(projectId, {
+      style,
+      styleInteractionId,
     });
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
+    return result.value;
   }
 
   async saveCharactersResult(
@@ -285,21 +301,23 @@ export class ProjectsService {
   ): Promise<Project> {
     // Server-side cap enforcement: max 2 characters
     const capped = characters.slice(0, MAX_CHARACTERS);
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: { characters: capped as any, charactersInteractionId },
+    const result = await this.projectsRepository.update(projectId, {
+      characters: capped as any,
+      charactersInteractionId,
     });
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
+    return result.value;
   }
 
   async savePortrait(projectId: string, portrait: Portrait): Promise<Project> {
-    const project = await this.prisma.project.findUniqueOrThrow({
-      where: { id: projectId },
-    });
-    const existing = (project.portraits as unknown as Portrait[]) || [];
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: { portraits: [...existing, portrait] as any },
-    });
+    const result = await this.projectsRepository.savePortrait(
+      projectId,
+      portrait,
+    );
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
+    return result.value;
   }
 
   async saveChaptersResult(
@@ -309,31 +327,35 @@ export class ProjectsService {
   ): Promise<Project> {
     // Server-side cap enforcement: max 1 chapter
     const capped = chapters.slice(0, MAX_CHAPTERS);
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: { chapters: capped as any, chaptersInteractionId },
+    const result = await this.projectsRepository.update(projectId, {
+      chapters: capped as any,
+      chaptersInteractionId,
     });
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
+    return result.value;
   }
 
   async saveIllustration(
     projectId: string,
     illustration: Illustration,
   ): Promise<Project> {
-    const project = await this.prisma.project.findUniqueOrThrow({
-      where: { id: projectId },
-    });
-    const existing = (project.illustrations as unknown as Illustration[]) || [];
-    return this.prisma.project.update({
-      where: { id: projectId },
-      data: { illustrations: [...existing, illustration] as any },
-    });
+    const result = await this.projectsRepository.saveIllustration(
+      projectId,
+      illustration,
+    );
+    if (result.isErr())
+      throw new InternalServerErrorException(result.error.message);
+    return result.value;
   }
 
   /** Validate that the project can run the next step */
   async validateCanRun(projectId: string, userId: string): Promise<Project> {
-    const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
-    });
+    const findResult = await this.projectsRepository.findUnique(projectId);
+    if (findResult.isErr())
+      throw new InternalServerErrorException(findResult.error.message);
+
+    const project = findResult.value;
     if (!project) throw new NotFoundException('Project not found');
     if (project.userId !== userId)
       throw new ForbiddenException('Access denied');
