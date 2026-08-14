@@ -2,12 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProjectsService } from './projects.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 describe('ProjectsService', () => {
   let service: ProjectsService;
-  let prisma: PrismaService;
-  let storage: StorageService;
 
   const mockPrismaService = {
     project: {
@@ -34,8 +36,6 @@ describe('ProjectsService', () => {
     }).compile();
 
     service = module.get<ProjectsService>(ProjectsService);
-    prisma = module.get<PrismaService>(PrismaService);
-    storage = module.get<StorageService>(StorageService);
   });
 
   afterEach(() => {
@@ -68,13 +68,21 @@ describe('ProjectsService', () => {
       mockStorageService.saveBookFile.mockResolvedValue(mockSavedPath);
       mockPrismaService.project.create.mockResolvedValue(mockProject);
 
-      const result = await service.createProject(userId, title, style, validBuffer);
+      const result = await service.createProject(
+        userId,
+        title,
+        style,
+        validBuffer,
+      );
 
       expect(result).toEqual(mockProject);
-      expect(mockStorageService.saveBookFile).toHaveBeenCalledWith(expect.any(String), expect.any(Object));
+      expect(mockStorageService.saveBookFile).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Object),
+      );
       expect(mockPrismaService.project.create).toHaveBeenCalledWith({
         data: {
-          id: expect.any(String),
+          id: expect.any(String) as string,
           userId,
           title,
           bookText: 'Valid book text content.',
@@ -89,22 +97,24 @@ describe('ProjectsService', () => {
     it('should throw BadRequestException if buffer is empty', async () => {
       const emptyBuffer = Buffer.from('   ');
       await expect(
-        service.createProject(userId, title, style, emptyBuffer)
+        service.createProject(userId, title, style, emptyBuffer),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if buffer is not provided', async () => {
       await expect(
-        service.createProject(userId, title, style, undefined)
+        service.createProject(userId, title, style, undefined),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should clean up storage if database insertion fails', async () => {
-      mockStorageService.saveBookFile.mockResolvedValue('uploads/projects/proj-123/book.txt');
+      mockStorageService.saveBookFile.mockResolvedValue(
+        'uploads/projects/proj-123/book.txt',
+      );
       mockPrismaService.project.create.mockRejectedValue(new Error('DB Error'));
 
       await expect(
-        service.createProject(userId, title, style, validBuffer)
+        service.createProject(userId, title, style, validBuffer),
       ).rejects.toThrow('DB Error');
 
       expect(mockStorageService.deleteProjectDir).toHaveBeenCalled();
@@ -144,16 +154,20 @@ describe('ProjectsService', () => {
     it('should throw NotFoundException if the project does not exist', async () => {
       mockPrismaService.project.findUnique.mockResolvedValue(null);
       await expect(
-        service.findOneUserProject(userId, projectId)
+        service.findOneUserProject(userId, projectId),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException if the project belongs to another user', async () => {
-      const mockProject = { id: projectId, userId: 'other-user', title: 'Proj 1' };
+      const mockProject = {
+        id: projectId,
+        userId: 'other-user',
+        title: 'Proj 1',
+      };
       mockPrismaService.project.findUnique.mockResolvedValue(mockProject);
 
       await expect(
-        service.findOneUserProject(userId, projectId)
+        service.findOneUserProject(userId, projectId),
       ).rejects.toThrow(ForbiddenException);
     });
   });

@@ -12,7 +12,9 @@ export class StorageService {
   private securePath(...parts: string[]): string {
     const resolvedPath = path.resolve(this.uploadsDir, ...parts);
     if (!resolvedPath.startsWith(this.uploadsDir)) {
-      throw new BadRequestException('Invalid project ID or path traversal detected');
+      throw new BadRequestException(
+        'Invalid project ID or path traversal detected',
+      );
     }
     return resolvedPath;
   }
@@ -21,15 +23,27 @@ export class StorageService {
    * Validates project ID format to ensure it cannot contain traversal elements
    */
   private validateProjectId(projectId: string): void {
-    if (!projectId || typeof projectId !== 'string' || projectId.includes('..') || projectId.includes('/') || projectId.includes('\\')) {
-      throw new BadRequestException('Invalid project ID or path traversal detected');
+    if (
+      !projectId ||
+      typeof projectId !== 'string' ||
+      projectId.includes('..') ||
+      projectId.includes('/') ||
+      projectId.includes('\\')
+    ) {
+      throw new BadRequestException(
+        'Invalid project ID or path traversal detected',
+      );
     }
   }
 
   /**
    * Saves text content to disk and returns the relative path
    */
-  async saveBookText(projectId: string, fileName: string, content: string): Promise<string> {
+  async saveBookText(
+    projectId: string,
+    fileName: string,
+    content: string,
+  ): Promise<string> {
     this.validateProjectId(projectId);
     const projectDir = this.securePath('projects', projectId);
     const targetFile = this.securePath('projects', projectId, fileName);
@@ -45,7 +59,10 @@ export class StorageService {
   /**
    * Writes a Multer buffer to the project folder
    */
-  async saveBookFile(projectId: string, file: Express.Multer.File): Promise<string> {
+  async saveBookFile(
+    projectId: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
     this.validateProjectId(projectId);
     const projectDir = this.securePath('projects', projectId);
     const targetFile = this.securePath('projects', projectId, 'book.txt');

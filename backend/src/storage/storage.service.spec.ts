@@ -15,7 +15,8 @@ describe('StorageService', () => {
           useFactory: () => {
             const svc = new StorageService();
             // Override the upload directory path for tests to avoid cluttering real uploads
-            (svc as any).uploadsDir = mockUploadsDir;
+            (svc as unknown as { uploadsDir: string }).uploadsDir =
+              mockUploadsDir;
             return svc;
           },
         },
@@ -28,7 +29,7 @@ describe('StorageService', () => {
   afterEach(async () => {
     try {
       await fs.rm(mockUploadsDir, { recursive: true, force: true });
-    } catch (e) {
+    } catch {
       // Ignore
     }
   });
@@ -41,10 +42,21 @@ describe('StorageService', () => {
     it('should create project directory and save book text correctly', async () => {
       const projectId = 'test-project-1';
       const content = 'Hello world, this is a test book content.';
-      const relativePath = await service.saveBookText(projectId, 'book.txt', content);
+      const relativePath = await service.saveBookText(
+        projectId,
+        'book.txt',
+        content,
+      );
 
-      expect(relativePath).toContain(path.join('uploads', 'projects', projectId, 'book.txt'));
-      const absolutePath = path.join(mockUploadsDir, 'projects', projectId, 'book.txt');
+      expect(relativePath).toContain(
+        path.join('uploads', 'projects', projectId, 'book.txt'),
+      );
+      const absolutePath = path.join(
+        mockUploadsDir,
+        'projects',
+        projectId,
+        'book.txt',
+      );
       const savedContent = await fs.readFile(absolutePath, 'utf-8');
       expect(savedContent).toBe(content);
     });
@@ -52,7 +64,7 @@ describe('StorageService', () => {
     it('should prevent directory traversal attacks', async () => {
       const maliciousProjectId = '../malicious-dir';
       await expect(
-        service.saveBookText(maliciousProjectId, 'book.txt', 'hack')
+        service.saveBookText(maliciousProjectId, 'book.txt', 'hack'),
       ).rejects.toThrow('Invalid project ID or path traversal detected');
     });
   });
@@ -67,9 +79,16 @@ describe('StorageService', () => {
       } as Express.Multer.File;
 
       const relativePath = await service.saveBookFile(projectId, mockFile);
-      expect(relativePath).toContain(path.join('uploads', 'projects', projectId, 'book.txt'));
+      expect(relativePath).toContain(
+        path.join('uploads', 'projects', projectId, 'book.txt'),
+      );
 
-      const absolutePath = path.join(mockUploadsDir, 'projects', projectId, 'book.txt');
+      const absolutePath = path.join(
+        mockUploadsDir,
+        'projects',
+        projectId,
+        'book.txt',
+      );
       const savedContent = await fs.readFile(absolutePath, 'utf-8');
       expect(savedContent).toBe('Multer buffer test content');
     });
@@ -96,17 +115,25 @@ describe('StorageService', () => {
       await service.saveBookText(projectId, 'book.txt', 'Delete me');
 
       const projectDir = path.join(mockUploadsDir, 'projects', projectId);
-      let dirExists = await fs.stat(projectDir).then(() => true).catch(() => false);
+      let dirExists = await fs
+        .stat(projectDir)
+        .then(() => true)
+        .catch(() => false);
       expect(dirExists).toBe(true);
 
       await service.deleteProjectDir(projectId);
 
-      dirExists = await fs.stat(projectDir).then(() => true).catch(() => false);
+      dirExists = await fs
+        .stat(projectDir)
+        .then(() => true)
+        .catch(() => false);
       expect(dirExists).toBe(false);
     });
 
     it('should prevent directory traversal when deleting', async () => {
-      await expect(service.deleteProjectDir('../')).rejects.toThrow('Invalid project ID or path traversal detected');
+      await expect(service.deleteProjectDir('../')).rejects.toThrow(
+        'Invalid project ID or path traversal detected',
+      );
     });
   });
 });

@@ -7,7 +7,6 @@ import type { User as PrismaUser } from '@prisma/client';
 
 describe('ProjectsController', () => {
   let controller: ProjectsController;
-  let service: ProjectsService;
 
   const mockUser: PrismaUser = {
     id: 'user-123',
@@ -25,13 +24,10 @@ describe('ProjectsController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ProjectsController],
-      providers: [
-        { provide: ProjectsService, useValue: mockProjectsService },
-      ],
+      providers: [{ provide: ProjectsService, useValue: mockProjectsService }],
     }).compile();
 
     controller = module.get<ProjectsController>(ProjectsController);
-    service = module.get<ProjectsService>(ProjectsService);
   });
 
   afterEach(() => {
@@ -91,13 +87,19 @@ describe('ProjectsController', () => {
 
       const result = await controller.findAll(mockUser);
       expect(result).toEqual(mockProjects);
-      expect(mockProjectsService.findUserProjects).toHaveBeenCalledWith(mockUser.id);
+      expect(mockProjectsService.findUserProjects).toHaveBeenCalledWith(
+        mockUser.id,
+      );
     });
   });
 
   describe('findOne', () => {
     it('should return project details if it exists and belongs to the user', async () => {
-      const mockProject = { id: 'proj-123', title: 'Proj 1', userId: mockUser.id };
+      const mockProject = {
+        id: 'proj-123',
+        title: 'Proj 1',
+        userId: mockUser.id,
+      };
       mockProjectsService.findOneUserProject.mockResolvedValue(mockProject);
 
       const result = await controller.findOne(mockUser, 'proj-123');

@@ -36,8 +36,10 @@ export class ProjectsController {
     // Input validation: Only UTF-8 text files allowed.
     // Validate by checking both file extension and MIME type.
     const isTextFile = file.originalname.endsWith('.txt');
-    const isTextMime = file.mimetype.startsWith('text/') || file.mimetype === 'application/octet-stream'; // Handle some OS variations for txt mimetypes
-    
+    const isTextMime =
+      file.mimetype.startsWith('text/') ||
+      file.mimetype === 'application/octet-stream'; // Handle some OS variations for txt mimetypes
+
     if (!isTextFile || !isTextMime) {
       throw new BadRequestException('Only .txt text files are allowed');
     }
